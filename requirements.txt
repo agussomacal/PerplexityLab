@@ -1,0 +1,7 @@
+python-benedict
+joblib
+pytest
+pathos
+numpy
+matplotlib
+tqdm
