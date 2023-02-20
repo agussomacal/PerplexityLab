@@ -89,9 +89,11 @@ class LabPipeline:
                     get_map_function(num_cores)(parallel_func, input_generator())),
                     desc="Doing {}...".format(function_block)):
                 datamanager.add_result(input_params, input_funcs, function_block, f_name, f_result)
+                # save after each result only if certain iterations passed
                 if save_on_iteration is not None and (i % save_on_iteration) == (-1 % save_on_iteration):
                     datamanager.save()
 
-        if save_on_iteration is None or save_on_iteration > 0:
-            datamanager.save()
+            # save after each layer
+            if save_on_iteration is None or save_on_iteration > 0:
+                datamanager.save()
         return datamanager

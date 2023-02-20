@@ -1,9 +1,10 @@
 import os
 import unittest
 
+import numpy as np
 from benedict import benedict
 
-from src.DataManager import DataManager, JOBLIB, ALL, group
+from src.DataManager import DataManager, JOBLIB, ALL, group, apply
 
 
 class TestDataManager(unittest.TestCase):
@@ -13,6 +14,14 @@ class TestDataManager(unittest.TestCase):
             name="TestDataManager",
             format=JOBLIB
         )
+
+    def add_some_results(self):
+        self.dm.add_result(input_params={"a": 1, "b": 2}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 5})
+        self.dm.add_result(input_params={"a": 2, "b": 2}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 2})
+        self.dm.add_result(input_params={"a": 2, "b": 5}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 1})
 
     def test_basic(self):
         self.dm.add_result(input_params={"a": 1, "b": 2}, input_funcs=dict(), function_block="block1",
@@ -40,12 +49,7 @@ class TestDataManager(unittest.TestCase):
         assert self.dm[ALL] == {"a": [1], "b": [2], "block1": ["f_name"], "res": [5]}
 
     def test_multiple_getitem(self):
-        self.dm.add_result(input_params={"a": 1, "b": 2}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 5})
-        self.dm.add_result(input_params={"a": 2, "b": 2}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 2})
-        self.dm.add_result(input_params={"a": 2, "b": 5}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 1})
+        self.add_some_results()
 
         # test for param
         assert self.dm["a"] == [1, 2, 2]
@@ -73,12 +77,7 @@ class TestDataManager(unittest.TestCase):
         assert set(self.dm["res2"]) == {None, None, None, None, 1, 2}
 
     def test_save_load_joblib(self):
-        self.dm.add_result(input_params={"a": 1, "b": 2}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 5})
-        self.dm.add_result(input_params={"a": 2, "b": 2}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 2})
-        self.dm.add_result(input_params={"a": 2, "b": 5}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 1})
+        self.add_some_results()
         self.dm.save()
 
         self.dm.load()
@@ -89,12 +88,7 @@ class TestDataManager(unittest.TestCase):
         assert self.dm["res"] == [5, 2, 1]
 
     def test_group(self):
-        self.dm.add_result(input_params={"a": 1, "b": 2}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 5})
-        self.dm.add_result(input_params={"a": 1, "b": 5}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 17})
-        self.dm.add_result(input_params={"a": 2, "b": 2}, input_funcs=dict(), function_block="block1",
-                           function_name="f_name", function_result={"res": 2})
+        self.add_some_results()
         self.dm.add_result(input_params={"a": 2, "b": 5}, input_funcs=dict(), function_block="block1",
                            function_name="f_name", function_result={"res": 1})
         for dby, d in group(self.dm, names=["a", "b"], by=["a"]):
@@ -103,6 +97,13 @@ class TestDataManager(unittest.TestCase):
             assert d["a"] == self.dm["a"]
         for dby, d in group(self.dm["a", "b"], names=["a", "b"], by=[]):
             assert d["a"] == self.dm["a"]
+
+    def test_apply(self):
+        self.add_some_results()
+        self.dm.add_result(input_params={"a": 2, "b": 5}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 1})
+        d = apply(self.dm, names=["a"], sqa=lambda a: a ** 2)
+        assert np.all(np.array(d["a"]) ** 2 == np.array(d["sqa"]))
 
     if __name__ == '__main__':
         unittest.main()
