@@ -3,7 +3,7 @@ import unittest
 
 from benedict import benedict
 
-from src.DataManager import DataManager, JOBLIB, ALL
+from src.DataManager import DataManager, JOBLIB, ALL, group
 
 
 class TestDataManager(unittest.TestCase):
@@ -72,7 +72,7 @@ class TestDataManager(unittest.TestCase):
                            function_name="f_name_22", function_result={"res2": 2})
         assert set(self.dm["res2"]) == {None, None, None, None, 1, 2}
 
-    def test_save_joblib(self):
+    def test_save_load_joblib(self):
         self.dm.add_result(input_params={"a": 1, "b": 2}, input_funcs=dict(), function_block="block1",
                            function_name="f_name", function_result={"res": 5})
         self.dm.add_result(input_params={"a": 2, "b": 2}, input_funcs=dict(), function_block="block1",
@@ -81,13 +81,28 @@ class TestDataManager(unittest.TestCase):
                            function_name="f_name", function_result={"res": 1})
         self.dm.save()
 
-    def test_load_joblib(self):
         self.dm.load()
         assert isinstance(self.dm.database, benedict)
         assert set(self.dm.parameters.keys()) == {"a", "b"}
         assert set(self.dm.function_blocks.keys()) == {"block1"}
         assert set(self.dm.variables.keys()) == {"res"}
         assert self.dm["res"] == [5, 2, 1]
+
+    def test_group(self):
+        self.dm.add_result(input_params={"a": 1, "b": 2}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 5})
+        self.dm.add_result(input_params={"a": 1, "b": 5}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 17})
+        self.dm.add_result(input_params={"a": 2, "b": 2}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 2})
+        self.dm.add_result(input_params={"a": 2, "b": 5}, input_funcs=dict(), function_block="block1",
+                           function_name="f_name", function_result={"res": 1})
+        for dby, d in group(self.dm, names=["a", "b"], by=["a"]):
+            assert len(set(d["a"])) == 1
+        for dby, d in group(self.dm, names=["a", "b"], by=[]):
+            assert d["a"] == self.dm["a"]
+        for dby, d in group(self.dm["a", "b"], names=["a", "b"], by=[]):
+            assert d["a"] == self.dm["a"]
 
     if __name__ == '__main__':
         unittest.main()

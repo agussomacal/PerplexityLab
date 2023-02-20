@@ -1,23 +1,10 @@
-"""
-
-# TODO Lab and DataManager should be together?
-# TODO: save structure may bi itself another dict with the function as keys and not inside the tuple:
-    [subset_dict(input_params, self.variables[variable].root),
-    subset_dict(input_funcs, self.variables[variable].dependencies),
-    function_block, function_name, variable]
-    instead of
-    [subset_dict(input_params, self.variables[variable].root),
-    subset_dict(input_funcs, self.variables[variable].dependencies),
-    variable]
-"""
-
 import copy
 import itertools
 import os
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from logging import warning
 from pathlib import Path
-from typing import Union, List, Dict, Set
+from typing import Union, List, Dict, Set, Tuple
 
 # import h5py
 import joblib
@@ -87,6 +74,10 @@ class DataManager:
 
         self.database = benedict()
 
+    @property
+    def columns(self):
+        return set(self.parameters.keys()).union(self.variables.keys()).union(self.function_blocks.keys())
+
     def get_variable(self, input_params, input_funcs, variable):
         if variable in self.variables.keys():
             return self.database.get([subset_dict(input_params, self.variables[variable].root),
@@ -114,7 +105,7 @@ class DataManager:
             output_funcs = {**input_funcs, **{function_block: function_name}}
             return [subset_dict(input_params, input_params.keys()),
                     subset_dict(output_funcs, output_funcs.keys())] \
-                in self.database
+                   in self.database
         else:
             raise Exception("is_in_database not implemented for that combination of Nones")
 
@@ -158,10 +149,10 @@ class DataManager:
             self.variables[k].root.update(input_params.keys())
         # add the result.
         self.database[subset_dict(input_params, input_params.keys()),
-        subset_dict(output_funcs, output_funcs.keys())] = function_result
+                      subset_dict(output_funcs, output_funcs.keys())] = function_result
 
     def __getitem__(self, item):
-        if isinstance(item, (set, list)):
+        if isinstance(item, (set, list, tuple)):
             result_dict = {k: [] for k in item}  # already fixed the output dict keys given by the name sin item.
 
             common_params = set(item).intersection(self.parameters.keys())
@@ -215,3 +206,26 @@ class DataManager:
                 raise Exception(f"Data format {self.format} not implemented.")
         else:
             warning(f"Data file in {self.path_to_data} not found.")
+
+
+# =========== =========== =========== #
+#         Other useful function       #
+# =========== =========== =========== #
+def group(datamanager: Union[DataManager, Dict[str, List]], names, by: List) -> Tuple[Dict[str, List], Dict[str, List]]:
+    assert isinstance(by, list), f"names should be a list of names even if it is only one."
+    if isinstance(datamanager, DataManager):
+        sub_dataset = datamanager[set(names).union(by)]
+    elif isinstance(datamanager, dict):
+        sub_dataset = {k: datamanager[k] for k in set(names).union(by)}  # filter by names
+    else:
+        raise Exception("Not implemented grouping for type {}".format(type(datamanager)))
+
+    if len(by) > 0:
+        length = len(sub_dataset[by[0]])
+        order = sorted(zip(range(length), map(str, zip(*[sub_dataset[k] for k in by]))), key=lambda x: x[1])
+        for _, indexes in itertools.groupby(order, key=lambda x: x[1]):
+            indexes = [i[0] for i in indexes]
+            yield OrderedDict([(k, sub_dataset[k][indexes[0]]) for k in by]), \
+                  OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
+    else:
+        yield dict(), OrderedDict([(k, sub_dataset[k]) for k in names])

@@ -1,30 +1,37 @@
 import inspect
 import os
 from contextlib import contextmanager
+from pathlib import Path
 
 import matplotlib.pylab as plt
 import numpy as np
 
-from src.DataManager import DataManager
+from src.DataManager import DataManager, group
 
-INCHES_PER_LETTER = 0.11  # 0.11
+INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
 LEGEND_EXTRA_PERCENTAGE_SPACE = 0.1
 
 
 def perplex_plot(plot_function):
-    def decorated_func(data_manager: DataManager, folder=""):
+    def decorated_func(data_manager: DataManager, folder="", plot_by=[], axes_by=[], axes_xy_proportions=(10, 8),
+                       dpi=None, **kwargs):
         function_arg_names = inspect.getfullargspec(plot_function).args
-        with save_fig(path=data_manager.path.joinpath(folder), filename=plot_function.__name__) as fax:
-            plot_function(*fax, **data_manager[set(function_arg_names).difference({"fig", "ax"})])
+        extra_arguments = {k: v for k, v in kwargs.items() if k in function_arg_names}
+        vars4plot = set(function_arg_names).intersection(data_manager.columns)
+        # vars4plot = set(function_arg_names).difference({"fig", "ax"}).difference(extra_arguments.keys())
+
+        for grouping_vars, data2plot in group(data_manager, names=vars4plot.union(plot_by, axes_by), by=plot_by):
+            plot_name = plot_function.__name__ + "_" + "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
+            data2plot_per_ax = [d2p for _, d2p in group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)]
+            with many_plots_context(N_subplots=len(data2plot_per_ax), path=data_manager.path.joinpath(folder),
+                                    filename=plot_name, savefig=True, return_fig=True,
+                                    axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
+                fig, axes = fax
+                for i, data2plot_in_ax in enumerate(data2plot_per_ax):
+                    plot_function(fig=fig, ax=get_sub_ax(axes, i), **data2plot_in_ax, **extra_arguments)
+
     return decorated_func
-
-
-@contextmanager
-def save_fig(path, filename):
-    fig, ax = plt.subplots()
-    yield fig, ax
-    plt.savefig(f"{path}/{filename}")
 
 
 def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
@@ -46,19 +53,28 @@ def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
 
 
 @contextmanager
-def many_plots_context(N_subplots, pathplot, savefig=True, return_fig=False, axes_xy_proportions=(4, 4), dpi=None):
+def many_plots_context(N_subplots, path, filename, savefig=True, return_fig=False, axes_xy_proportions=(4, 4),
+                       dpi=None):
     figax = squared_subplots(N_subplots, return_fig=return_fig, axes_xy_proportions=axes_xy_proportions)
 
     yield figax
 
-    end = ''
-    if pathplot[-4:] not in ['.png', '.jpg', '.svg']:
-        end = '.png'
+    if filename[-4:] not in ['.png', '.jpg', '.svg']:
+        filename += '.png'
+
     if savefig:
-        plt.savefig('{}{}'.format(pathplot, end), dpi=dpi)
+        Path(path).mkdir(parents=True, exist_ok=True)
+        plt.savefig(f"{path}/{filename}", dpi=dpi)
     else:
         plt.show()
     plt.close()
+
+
+@contextmanager
+def save_fig(path, filename, axes_xy_proportions=(10, 8)):
+    with many_plots_context(1, path, filename, savefig=True, return_fig=True, axes_xy_proportions=axes_xy_proportions,
+                            dpi=None) as fax:
+        yield fax
 
 
 def make_gif(directory, image_list_names, gif_name, delay=20):
