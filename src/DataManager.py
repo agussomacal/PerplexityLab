@@ -1,14 +1,17 @@
 import copy
+import inspect
 import itertools
 import os
 from collections import defaultdict, OrderedDict
 from logging import warning
 from pathlib import Path
-from typing import Union, List, Dict, Set, Tuple
+from typing import Union, List, Dict, Set, Tuple, Callable
 
 # import h5py
 import joblib
 from benedict import benedict
+
+from src.performance_utils import timeit
 
 ALL = "AllParamsBlockVars"
 
@@ -105,7 +108,7 @@ class DataManager:
             output_funcs = {**input_funcs, **{function_block: function_name}}
             return [subset_dict(input_params, input_params.keys()),
                     subset_dict(output_funcs, output_funcs.keys())] \
-                   in self.database
+                in self.database
         else:
             raise Exception("is_in_database not implemented for that combination of Nones")
 
@@ -149,7 +152,7 @@ class DataManager:
             self.variables[k].root.update(input_params.keys())
         # add the result.
         self.database[subset_dict(input_params, input_params.keys()),
-                      subset_dict(output_funcs, output_funcs.keys())] = function_result
+        subset_dict(output_funcs, output_funcs.keys())] = function_result
 
     def __getitem__(self, item):
         if isinstance(item, (set, list, tuple)):
@@ -167,8 +170,7 @@ class DataManager:
                             result_dict[k].append(v)
             return result_dict
         elif item == ALL:
-            everything = set(self.parameters.keys()).union(self.variables.keys()).union(self.function_blocks.keys())
-            return self.__getitem__(everything)
+            return self.__getitem__(self.columns)
         elif isinstance(item, str):
             # one only item gives the list directly instead of the dictionary, for that should be given in list form
             # for example ["name"]
@@ -193,26 +195,30 @@ class DataManager:
             raise Exception(f"Data format {self.format} not implemented.")
 
     def load(self):
-        if len(self.database) == 0 and os.path.exists(self.path_to_data):
-            if self.format == JOBLIB:
-                self.database, self.parameters, self.function_blocks, self.variables = joblib.load(self.path_to_data)
-            # elif self.format == HD5:
-            #     with h5py.File(self.path_to_data, 'r') as f:
-            #         self.database = f['database']
-            #         self.parameters = f['parameters']
-            #         self.variables = f['variables']
-            #         self.function_blocks = f['function_blocks']
+        with timeit("Loading dataset"):
+            if len(self.database) == 0 and os.path.exists(self.path_to_data):
+                if self.format == JOBLIB:
+                    self.database, self.parameters, self.function_blocks, self.variables = joblib.load(
+                        self.path_to_data)
+                # elif self.format == HD5:
+                #     with h5py.File(self.path_to_data, 'r') as f:
+                #         self.database = f['database']
+                #         self.parameters = f['parameters']
+                #         self.variables = f['variables']
+                #         self.function_blocks = f['function_blocks']
+                else:
+                    raise Exception(f"Data format {self.format} not implemented.")
             else:
-                raise Exception(f"Data format {self.format} not implemented.")
-        else:
-            warning(f"Data file in {self.path_to_data} not found.")
+                warning(f"Data file in {self.path_to_data} not found.")
 
 
 # =========== =========== =========== #
 #         Other useful function       #
 # =========== =========== =========== #
-def group(datamanager: Union[DataManager, Dict[str, List]], names, by: List) -> Tuple[Dict[str, List], Dict[str, List]]:
-    assert isinstance(by, list), f"names should be a list of names even if it is only one."
+def group(datamanager: Union[DataManager, Dict[str, List]], names: List, by: List) -> Tuple[
+    Dict[str, List], Dict[str, List]]:
+    assert isinstance(names, (set, list)), f"names should be a list or set of names even if it is only one."
+    assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."
     if isinstance(datamanager, DataManager):
         sub_dataset = datamanager[set(names).union(by)]
     elif isinstance(datamanager, dict):
@@ -226,6 +232,23 @@ def group(datamanager: Union[DataManager, Dict[str, List]], names, by: List) -> 
         for _, indexes in itertools.groupby(order, key=lambda x: x[1]):
             indexes = [i[0] for i in indexes]
             yield OrderedDict([(k, sub_dataset[k][indexes[0]]) for k in by]), \
-                  OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
+                OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
     else:
         yield dict(), OrderedDict([(k, sub_dataset[k]) for k in names])
+
+
+def apply(datamanager: DataManager, names: List[str], **kwargs: Callable):
+    assert all(map(lambda x: isinstance(x, Callable), kwargs.values())), "all **kwargs should be callables."
+    variables_for_callables = set(
+        itertools.chain(*[inspect.getfullargspec(function).args for function in kwargs.values()]))
+    sub_dataset = datamanager[variables_for_callables.union(names)]
+    length = len(list(sub_dataset.values())[0])
+    out_dict = dict()
+    for function_name, function in kwargs.items():
+        # TODO: use groupby to do the implementation ore efficient and only be called once
+        input_vars_names = inspect.getfullargspec(function).args
+        out_dict.update(
+            {function_name: [function(**{k: sub_dataset[k][i] for k in input_vars_names}) for i in range(length)]}
+        )
+    out_dict.update({k: sub_dataset[k] for k in names})
+    return out_dict
