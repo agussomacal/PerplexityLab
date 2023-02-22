@@ -7,7 +7,7 @@ import matplotlib.pylab as plt
 import numpy as np
 
 from src.DataManager import DataManager, group
-ºfrom src.performance_utils import timeit
+from src.performance_utils import timeit
 
 INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
