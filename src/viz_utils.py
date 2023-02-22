@@ -7,6 +7,7 @@ import matplotlib.pylab as plt
 import numpy as np
 
 from src.DataManager import DataManager, group
+ºfrom src.performance_utils import timeit
 
 INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
@@ -24,12 +25,13 @@ def perplex_plot(plot_function):
         for grouping_vars, data2plot in group(data_manager, names=vars4plot.union(plot_by, axes_by), by=plot_by):
             plot_name = plot_function.__name__ + "_" + "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
             data2plot_per_ax = [d2p for _, d2p in group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)]
-            with many_plots_context(N_subplots=len(data2plot_per_ax), path=data_manager.path.joinpath(folder),
-                                    filename=plot_name, savefig=True, return_fig=True,
-                                    axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
-                fig, axes = fax
-                for i, data2plot_in_ax in enumerate(data2plot_per_ax):
-                    plot_function(fig=fig, ax=get_sub_ax(axes, i), **data2plot_in_ax, **extra_arguments)
+            with timeit("Plot {}".format(plot_name)):
+                with many_plots_context(N_subplots=len(data2plot_per_ax), path=data_manager.path.joinpath(folder),
+                                        filename=plot_name, savefig=True, return_fig=True,
+                                        axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
+                    fig, axes = fax
+                    for i, data2plot_in_ax in enumerate(data2plot_per_ax):
+                        plot_function(fig=fig, ax=get_sub_ax(axes, i), **data2plot_in_ax, **extra_arguments)
 
     return decorated_func
 

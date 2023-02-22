@@ -11,7 +11,7 @@ def timeit(msg):
     print(msg, end='')
     t0 = time.time()
     yield
-    print(' -> duracion {}: {}'.format(msg, time.time() - t0))
+    print('\r -> duracion {}: {}'.format(msg, time.time() - t0))
 
 
 def calculate_time(func: Callable):
