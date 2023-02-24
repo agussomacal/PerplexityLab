@@ -5,9 +5,10 @@ from pathlib import Path
 
 import matplotlib.pylab as plt
 import numpy as np
+from tqdm import tqdm
 
-from src.DataManager import DataManager, group
-from src.performance_utils import timeit
+from src.DataManager import DataManager, group, dmfilter
+from src.performance_utils import timeit, get_map_function
 
 INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
@@ -15,23 +16,41 @@ LEGEND_EXTRA_PERCENTAGE_SPACE = 0.1
 
 
 def perplex_plot(plot_function):
-    def decorated_func(data_manager: DataManager, folder="", plot_by=[], axes_by=[], axes_xy_proportions=(10, 8),
-                       dpi=None, **kwargs):
+    def decorated_func(data_manager: DataManager, name="", folder="", plot_by=[], axes_by=[],
+                       axes_xy_proportions=(10, 8),
+                       dpi=None, plot_again=True, format=".png", num_cores=-1, **kwargs):
+        path = data_manager.path.joinpath(folder)
+        Path(path).mkdir(parents=True, exist_ok=True)
+
         function_arg_names = inspect.getfullargspec(plot_function).args
-        extra_arguments = {k: v for k, v in kwargs.items() if k in function_arg_names}
         vars4plot = set(function_arg_names).intersection(data_manager.columns)
+        specified_vars = {k: v for k, v in kwargs.items() if k in data_manager.columns}
+        extra_arguments = {k: v for k, v in kwargs.items() if
+                           k in function_arg_names and k not in specified_vars.keys()}
         # vars4plot = set(function_arg_names).difference({"fig", "ax"}).difference(extra_arguments.keys())
 
-        for grouping_vars, data2plot in group(data_manager, names=vars4plot.union(plot_by, axes_by), by=plot_by):
-            plot_name = plot_function.__name__ + "_" + "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
-            data2plot_per_ax = [d2p for _, d2p in group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)]
+        def iterator():
+            for grouping_vars, data2plot in group(data_manager, names=vars4plot.union(plot_by, axes_by), by=plot_by,
+                                                  **specified_vars):
+                plot_name = name + plot_function.__name__ + "_" + "_".join(
+                    ["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                plot_name = f"{path}/{plot_name}{format}"
+                if plot_again or not os.path.exists(plot_name):
+                    data2plot_per_ax = [d2p for _, d2p in
+                                        group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)]
+                    yield data2plot_per_ax, plot_name
+
+        def parallel_func(args):
+            data2plot_per_ax, plot_name = args
             with timeit("Plot {}".format(plot_name)):
-                with many_plots_context(N_subplots=len(data2plot_per_ax), path=data_manager.path.joinpath(folder),
-                                        filename=plot_name, savefig=True, return_fig=True,
-                                        axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
+                with many_plots_context(N_subplots=len(data2plot_per_ax), pathname=plot_name, savefig=True,
+                                        return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
                     fig, axes = fax
                     for i, data2plot_in_ax in enumerate(data2plot_per_ax):
                         plot_function(fig=fig, ax=get_sub_ax(axes, i), **data2plot_in_ax, **extra_arguments)
+
+        for _ in get_map_function(num_cores)(parallel_func, iterator()):
+            pass
 
     return decorated_func
 
@@ -55,18 +74,17 @@ def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
 
 
 @contextmanager
-def many_plots_context(N_subplots, path, filename, savefig=True, return_fig=False, axes_xy_proportions=(4, 4),
+def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axes_xy_proportions=(4, 4),
                        dpi=None):
     figax = squared_subplots(N_subplots, return_fig=return_fig, axes_xy_proportions=axes_xy_proportions)
 
     yield figax
 
-    if filename[-4:] not in ['.png', '.jpg', '.svg']:
-        filename += '.png'
+    # if filename[-4:] not in ['.png', '.jpg', '.svg']:
+    #     filename += '.png'
 
     if savefig:
-        Path(path).mkdir(parents=True, exist_ok=True)
-        plt.savefig(f"{path}/{filename}", dpi=dpi)
+        plt.savefig(pathname, dpi=dpi)
     else:
         plt.show()
     plt.close()

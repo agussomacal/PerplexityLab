@@ -6,6 +6,7 @@ import numpy as np
 
 CYCLIC = "cyclic"
 EXTEND = "extend"
+REFLECT = "reflect"
 
 
 def get_cyclic_indexes(array, indexes, cyclic_dimension):
@@ -55,7 +56,7 @@ class ArrayIndexerNd:
         self.array_shape = array if isinstance(array, tuple) else np.shape(array)
         self.modes = (modes,) * len(self.array_shape) if isinstance(modes, str) else modes
         assert len(self.array_shape) == len(self.modes)
-        assert all([mode == EXTEND or mode == CYCLIC for mode in self.modes]), 'mode should be extend or cyclic'
+        assert all([mode == EXTEND or mode == CYCLIC or REFLECT for mode in self.modes]), 'mode should be extend or cyclic'
         self.transformer_func_list = [getattr(self, 'transform_indexes2{}_indexes'.format(mode)) for mode in self.modes]
 
     def __len__(self):
@@ -100,6 +101,9 @@ class ArrayIndexerNd:
             ),
             axis=0
         ), dtype=int).ravel()
+
+    def transform_indexes2reflect_indexes(self, i, dim) -> int:
+        return self.array_shape[dim] - i % self.array_shape[dim] if i >= self.array_shape[dim] else np.abs(i)
 
     def get_transformed_closedrange(self, indexi: Tuple, indexf: Tuple):
         return np.array(self[list(itertools.product(*[np.arange(ii, ie + 1) for ii, ie in zip(indexi, indexf)]))])

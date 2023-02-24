@@ -5,7 +5,7 @@ import os
 from collections import defaultdict, OrderedDict
 from logging import warning
 from pathlib import Path
-from typing import Union, List, Dict, Set, Tuple, Callable
+from typing import Union, List, Dict, Set, Tuple, Callable, Generator
 
 # import h5py
 import joblib
@@ -108,7 +108,7 @@ class DataManager:
             output_funcs = {**input_funcs, **{function_block: function_name}}
             return [subset_dict(input_params, input_params.keys()),
                     subset_dict(output_funcs, output_funcs.keys())] \
-                in self.database
+                   in self.database
         else:
             raise Exception("is_in_database not implemented for that combination of Nones")
 
@@ -152,7 +152,7 @@ class DataManager:
             self.variables[k].root.update(input_params.keys())
         # add the result.
         self.database[subset_dict(input_params, input_params.keys()),
-        subset_dict(output_funcs, output_funcs.keys())] = function_result
+                      subset_dict(output_funcs, output_funcs.keys())] = function_result
 
     def __getitem__(self, item):
         if isinstance(item, (set, list, tuple)):
@@ -215,16 +215,29 @@ class DataManager:
 # =========== =========== =========== #
 #         Other useful function       #
 # =========== =========== =========== #
-def group(datamanager: Union[DataManager, Dict[str, List]], names: List, by: List) -> Tuple[
-    Dict[str, List], Dict[str, List]]:
+def get_sub_dataset(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set]) -> Dict[str, List]:
     assert isinstance(names, (set, list)), f"names should be a list or set of names even if it is only one."
-    assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."
     if isinstance(datamanager, DataManager):
-        sub_dataset = datamanager[set(names).union(by)]
+        sub_dataset = datamanager[names]
     elif isinstance(datamanager, dict):
-        sub_dataset = {k: datamanager[k] for k in set(names).union(by)}  # filter by names
+        sub_dataset = {k: datamanager[k] for k in names}  # filter by names
     else:
         raise Exception("Not implemented grouping for type {}".format(type(datamanager)))
+    return sub_dataset
+
+
+def dmfilter(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], **kwargs: List):
+    sub_dataset = get_sub_dataset(datamanager, names=set(names).union(kwargs.keys()))
+    length = len(list(sub_dataset.values())[0])
+    accepted_indexes = [i for i in range(length) if
+                        all([sub_dataset[k][i] in (v if isinstance(v, list) else [v]) for k, v in kwargs.items()])]
+    return {k: [sub_dataset[k][i] for i in accepted_indexes] for k in names}
+
+
+def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], by: List, **filters: List) \
+        -> Generator[Tuple[Dict[str, List], Dict[str, List]], None, None]:
+    assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."
+    sub_dataset = dmfilter(datamanager, names=set(names).union(by), **filters)
 
     if len(by) > 0:
         length = len(sub_dataset[by[0]])
@@ -232,7 +245,7 @@ def group(datamanager: Union[DataManager, Dict[str, List]], names: List, by: Lis
         for _, indexes in itertools.groupby(order, key=lambda x: x[1]):
             indexes = [i[0] for i in indexes]
             yield OrderedDict([(k, sub_dataset[k][indexes[0]]) for k in by]), \
-                OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
+                  OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
     else:
         yield dict(), OrderedDict([(k, sub_dataset[k]) for k in names])
 
