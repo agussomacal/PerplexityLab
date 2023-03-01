@@ -85,15 +85,20 @@ class LabPipeline:
                 result = vars.function(**vars.input_vars)
                 return vars.input_params, vars.input_funcs, vars.function_name, result
 
-            for i, (input_params, input_funcs, f_name, f_result) in tqdm(enumerate(
-                    get_map_function(num_cores)(parallel_func, input_generator())),
-                    desc="Doing {}...".format(function_block)):
-                datamanager.add_result(input_params, input_funcs, function_block, f_name, f_result)
-                # save after each result only if certain iterations passed
-                if save_on_iteration is not None and (i % save_on_iteration) == (-1 % save_on_iteration):
-                    datamanager.save()
+            input_list = list(input_generator())
+            if len(input_list) > 0:
+                for i, (input_params, input_funcs, f_name, f_result) in tqdm(enumerate(
+                        get_map_function(num_cores)(parallel_func, input_list)),
+                        desc="Doing {}...".format(function_block)):
+                    datamanager.add_result(input_params, input_funcs, function_block, f_name, f_result)
+                    # save after each result only if certain iterations passed
+                    if save_on_iteration is not None and (i % save_on_iteration) == (-1 % save_on_iteration):
+                        datamanager.save()
 
-            # save after each layer
-            if save_on_iteration is None or save_on_iteration > 0:
-                datamanager.save()
+                # save after each layer
+                if save_on_iteration is None or save_on_iteration > 0:
+                    datamanager.save()
+            else:
+                print("\r Experiments for {} already done, skipping.".format(function_block))
+
         return datamanager

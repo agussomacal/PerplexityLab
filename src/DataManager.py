@@ -86,9 +86,9 @@ class DataManager:
             return self.database.get([subset_dict(input_params, self.variables[variable].root),
                                       subset_dict(input_funcs, self.variables[variable].dependencies),
                                       variable], None)
-        elif variable in self.parameters.keys():
+        elif variable in input_params.keys():
             return input_params[variable]
-        elif variable in self.function_blocks.keys():
+        elif variable in input_funcs.keys():
             return input_funcs[variable]
         else:
             raise Exception(f"Variable {variable} not in dataset.")
@@ -258,7 +258,7 @@ def apply(datamanager: DataManager, names: List[str], **kwargs: Callable):
     length = len(list(sub_dataset.values())[0])
     out_dict = dict()
     for function_name, function in kwargs.items():
-        # TODO: use groupby to do the implementation ore efficient and only be called once
+        # TODO: use groupby to do the implementation more efficient and only be called once
         input_vars_names = inspect.getfullargspec(function).args
         out_dict.update(
             {function_name: [function(**{k: sub_dataset[k][i] for k in input_vars_names}) for i in range(length)]}

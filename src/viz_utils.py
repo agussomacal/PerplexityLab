@@ -18,15 +18,19 @@ LEGEND_EXTRA_PERCENTAGE_SPACE = 0.1
 def perplex_plot(plot_function):
     def decorated_func(data_manager: DataManager, name="", folder="", plot_by=[], axes_by=[],
                        axes_xy_proportions=(10, 8),
-                       dpi=None, plot_again=True, format=".png", num_cores=-1, **kwargs):
+                       dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
         path = data_manager.path.joinpath(folder)
         Path(path).mkdir(parents=True, exist_ok=True)
 
         function_arg_names = inspect.getfullargspec(plot_function).args
+        assert len({"fig", "ax"}.intersection(
+            function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
+                                       "function but they were not found: {}".format(function_arg_names)
         vars4plot = set(function_arg_names).intersection(data_manager.columns)
         specified_vars = {k: v for k, v in kwargs.items() if k in data_manager.columns}
         extra_arguments = {k: v for k, v in kwargs.items() if
                            k in function_arg_names and k not in specified_vars.keys()}
+
         # vars4plot = set(function_arg_names).difference({"fig", "ax"}).difference(extra_arguments.keys())
 
         def iterator():
@@ -36,18 +40,20 @@ def perplex_plot(plot_function):
                     ["{}{}".format(k, v) for k, v in grouping_vars.items()])
                 plot_name = f"{path}/{plot_name}{format}"
                 if plot_again or not os.path.exists(plot_name):
-                    data2plot_per_ax = [d2p for _, d2p in
-                                        group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)]
-                    yield data2plot_per_ax, plot_name
+                    yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
 
         def parallel_func(args):
-            data2plot_per_ax, plot_name = args
+            data2plot_per_plot, plot_name = args
             with timeit("Plot {}".format(plot_name)):
-                with many_plots_context(N_subplots=len(data2plot_per_ax), pathname=plot_name, savefig=True,
+                with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=True,
                                         return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
                     fig, axes = fax
-                    for i, data2plot_in_ax in enumerate(data2plot_per_ax):
-                        plot_function(fig=fig, ax=get_sub_ax(axes, i), **data2plot_in_ax, **extra_arguments)
+                    for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
+                        ax = get_sub_ax(axes, i)
+                        ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
+                        plot_function(fig=fig, ax=ax,
+                                      **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
+                                      **extra_arguments)
 
         for _ in get_map_function(num_cores)(parallel_func, iterator()):
             pass
