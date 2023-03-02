@@ -2,12 +2,15 @@ import inspect
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Callable
 
 import matplotlib.pylab as plt
 import numpy as np
-from tqdm import tqdm
+import pandas as pd
+import seaborn as sns
+from makefun import with_signature
 
-from src.DataManager import DataManager, group, dmfilter
+from src.DataManager import DataManager, group
 from src.performance_utils import timeit, get_map_function
 
 INCHES_PER_LETTER = 0.11
@@ -59,6 +62,22 @@ def perplex_plot(plot_function):
             pass
 
     return decorated_func
+
+
+def generic_plot(x: str, y: str, label: str, seaborn_func: Callable = sns.lineplot):
+    @perplex_plot
+    @with_signature(f"plot_{y}_vs_{x}_by_{label}(fig, ax, {x}, {y}, {label})")
+    def function_plot(**kwargs):
+        data = pd.DataFrame.from_dict(
+            {
+                x: kwargs[x],
+                y: kwargs[y],
+                label: kwargs[label],
+            }
+        )
+        seaborn_func(data=data, x=x, y=y, hue=label, ax=kwargs["ax"])
+
+    return function_plot
 
 
 def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):

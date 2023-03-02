@@ -92,7 +92,8 @@ class LabPipeline:
                         desc="Doing {}...".format(function_block)):
                     datamanager.add_result(input_params, input_funcs, function_block, f_name, f_result)
                     # save after each result only if certain iterations passed
-                    if save_on_iteration is not None and (i % save_on_iteration) == (-1 % save_on_iteration):
+                    if save_on_iteration is not None and save_on_iteration > 0 \
+                            and (i % save_on_iteration) == (-1 % save_on_iteration):
                         datamanager.save()
 
                 # save after each layer
