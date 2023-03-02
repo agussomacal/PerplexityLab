@@ -10,7 +10,7 @@ import pandas as pd
 import seaborn as sns
 from makefun import with_signature
 
-from src.DataManager import DataManager, group
+from src.DataManager import DataManager, group, apply
 from src.performance_utils import timeit, get_map_function
 
 INCHES_PER_LETTER = 0.11
@@ -31,13 +31,18 @@ def perplex_plot(plot_function):
                                        "function but they were not found: {}".format(function_arg_names)
         vars4plot = set(function_arg_names).intersection(data_manager.columns)
         specified_vars = {k: v for k, v in kwargs.items() if k in data_manager.columns}
+        functions2apply = {k: v for k, v in kwargs.items() if
+                           k in function_arg_names and k not in specified_vars.keys() and isinstance(v, Callable)
+                           and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
         extra_arguments = {k: v for k, v in kwargs.items() if
-                           k in function_arg_names and k not in specified_vars.keys()}
+                           k in function_arg_names and k not in specified_vars.keys()
+                           and k not in functions2apply.keys()}
 
-        # vars4plot = set(function_arg_names).difference({"fig", "ax"}).difference(extra_arguments.keys())
+        dm = apply(data_manager, names=vars4plot.union(plot_by, axes_by, specified_vars.keys()), **functions2apply)
+        vars4plot.update(functions2apply.keys())
 
         def iterator():
-            for grouping_vars, data2plot in group(data_manager, names=vars4plot.union(plot_by, axes_by), by=plot_by,
+            for grouping_vars, data2plot in group(dm, names=vars4plot.union(plot_by, axes_by), by=plot_by,
                                                   **specified_vars):
                 plot_name = name + plot_function.__name__ + "_" + "_".join(
                     ["{}{}".format(k, v) for k, v in grouping_vars.items()])
@@ -64,18 +69,23 @@ def perplex_plot(plot_function):
     return decorated_func
 
 
-def generic_plot(x: str, y: str, label: str, seaborn_func: Callable = sns.lineplot):
+def generic_plot(x: str, y: str, label: str, seaborn_func: Callable = sns.lineplot, log: str = ""):
     @perplex_plot
-    @with_signature(f"plot_{y}_vs_{x}_by_{label}(fig, ax, {x}, {y}, {label})")
-    def function_plot(**kwargs):
+    @with_signature(f"plot_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label})})")
+    def function_plot(**vars4plot):
+        ax = vars4plot["ax"]
         data = pd.DataFrame.from_dict(
             {
-                x: kwargs[x],
-                y: kwargs[y],
-                label: kwargs[label],
+                x: vars4plot[x],
+                y: vars4plot[y],
+                label: vars4plot[label],
             }
         )
-        seaborn_func(data=data, x=x, y=y, hue=label, ax=kwargs["ax"])
+        seaborn_func(data=data, x=x, y=y, hue=label, ax=ax)
+        if "x" in log:
+            ax.set_xscale("log")
+        if "y" in log:
+            ax.set_yscale("log")
 
     return function_plot
 

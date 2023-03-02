@@ -36,7 +36,9 @@ class TestUtilsSquaredSubplots(unittest.TestCase):
                                         num_cores=1, forget=True, save_on_iteration=False,
                                         x=np.linspace(-1, 1), k=[0, 1])
 
-        generic_plot(x="x", y="y", label="preprocessing", seaborn_func=sns.lineplot)(self.data_manager, axes_by=["k"])
+        # generic_plot(x="x", y="y", label="preprocessing", seaborn_func=sns.lineplot)(self.data_manager, axes_by=["k"])
+        generic_plot(x="x", y="z", label="preprocessing", seaborn_func=sns.lineplot)(
+            self.data_manager, z=lambda x, y: y/x, axes_by=["k"])
 
-    if __name__ == '__main__':
-        unittest.main()
+        if __name__ == '__main__':
+            unittest.main()
