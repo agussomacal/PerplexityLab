@@ -1,4 +1,5 @@
 import inspect
+import itertools
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -24,21 +25,26 @@ def perplex_plot(plot_function):
                        dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
         path = data_manager.path.joinpath(folder)
         Path(path).mkdir(parents=True, exist_ok=True)
+        plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
+        axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
 
         function_arg_names = inspect.getfullargspec(plot_function).args
         assert len({"fig", "ax"}.intersection(
             function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
                                        "function but they were not found: {}".format(function_arg_names)
         vars4plot = set(function_arg_names).intersection(data_manager.columns)
-        specified_vars = {k: v for k, v in kwargs.items() if k in data_manager.columns}
+        specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if k in data_manager.columns}
         functions2apply = {k: v for k, v in kwargs.items() if
-                           k in function_arg_names and k not in specified_vars.keys() and isinstance(v, Callable)
+                           k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                               v, Callable)
                            and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
         extra_arguments = {k: v for k, v in kwargs.items() if
                            k in function_arg_names and k not in specified_vars.keys()
                            and k not in functions2apply.keys()}
 
-        dm = apply(data_manager, names=vars4plot.union(plot_by, axes_by, specified_vars.keys()), **functions2apply)
+        dm = apply(data_manager,
+                   names=vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(functions2apply.keys()),
+                   **functions2apply)
         vars4plot.update(functions2apply.keys())
 
         def iterator():
@@ -46,6 +52,9 @@ def perplex_plot(plot_function):
                                                   **specified_vars):
                 plot_name = name + plot_function.__name__ + "_" + "_".join(
                     ["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                plot_name = plot_name.replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace(",",
+                                                                                                                  "").replace(
+                    ".", "").replace(";", "").replace(":", "").replace(" ", "_")
                 plot_name = f"{path}/{plot_name}{format}"
                 if plot_again or not os.path.exists(plot_name):
                     yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
@@ -69,25 +78,38 @@ def perplex_plot(plot_function):
     return decorated_func
 
 
-def generic_plot(x: str, y: str, label: str, seaborn_func: Callable = sns.lineplot, log: str = ""):
+def generic_plot(data_manager: DataManager, x: str, y: str, label: str, plot_func: Callable = sns.lineplot,
+                 other_plot_funcs=(), log: str = "", **kwargs):
+    # TODO: a way to agregate data instead of splitting depending if sns or plt
     @perplex_plot
     @with_signature(f"plot_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label})})")
     def function_plot(**vars4plot):
         ax = vars4plot["ax"]
-        data = pd.DataFrame.from_dict(
-            {
-                x: vars4plot[x],
-                y: vars4plot[y],
-                label: vars4plot[label],
-            }
-        )
-        seaborn_func(data=data, x=x, y=y, hue=label, ax=ax)
+
+        for other_plot in [other_plot_funcs] if isinstance(other_plot_funcs, Callable) else other_plot_funcs:
+            other_plot(**{k: vars4plot[k] for k in inspect.getfullargspec(other_plot_funcs).args})
+
+        if "data" in inspect.getfullargspec(plot_func).args:
+            data = pd.DataFrame.from_dict(
+                {
+                    x: vars4plot[x],
+                    y: vars4plot[y],
+                    label: vars4plot[label],
+                }
+            )
+            data.sort_values(by=x)
+            plot_func(data=data, x=x, y=y, hue=label, ax=ax)
+        else:
+            for x_i, y_i, label_i in zip(vars4plot[x], vars4plot[y], vars4plot[label]):
+                plot_func(ax, x_i, y_i, label=label_i)
+            ax.legend()
+
         if "x" in log:
             ax.set_xscale("log")
         if "y" in log:
             ax.set_yscale("log")
 
-    return function_plot
+    function_plot(data_manager, **kwargs)
 
 
 def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
