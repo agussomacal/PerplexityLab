@@ -112,6 +112,32 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str, plot_fun
     function_plot(data_manager, **kwargs)
 
 
+def correlation_plot(data_manager: DataManager, axes_var: str, val_1, val_2, value_var, log: str = "", **kwargs):
+    @perplex_plot
+    @with_signature(
+        f"correlation_plot_{axes_var}_{value_var}(fig, ax, {', '.join({axes_var, value_var})})")
+    def function_plot(**vars4plot):
+        ax = vars4plot["ax"]
+        ax.scatter(vars4plot[value_var][0], vars4plot[value_var][1], label="Data")
+        ax.plot(vars4plot[value_var][0], vars4plot[value_var][0], ':k', label="Equality line")
+        ax.set_xlabel(vars4plot[axes_var][0])
+        ax.set_ylabel(vars4plot[axes_var][1])
+        ax.legend()
+
+        if "x" in log:
+            ax.set_xscale("log")
+        if "y" in log:
+            ax.set_yscale("log")
+
+    # if we forgot to put some vars add them to the plot_by; but needs to know the arguments of the functions
+    # not_specified_vars = set(data_manager.columns).difference(kwargs.get("plot_by", []))
+    # not_specified_vars = not_specified_vars.difference(kwargs.get("axes_by", []))
+    # not_specified_vars = not_specified_vars.difference(kwargs.keys())
+    # not_specified_vars = not_specified_vars.difference([axes_var, value_var])
+    # kwargs["plot_by"] = kwargs.get("plot_by", []) + list(not_specified_vars)
+    function_plot(data_manager, **{axes_var: [val_1, val_2]}, **kwargs)
+
+
 def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
     if N_subplots > 0:
         nrows = int(np.sqrt(N_subplots))
