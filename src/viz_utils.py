@@ -174,10 +174,16 @@ def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axe
 
 
 @contextmanager
-def save_fig(path, filename, axes_xy_proportions=(10, 8)):
-    with many_plots_context(1, path, filename, savefig=True, return_fig=True, axes_xy_proportions=axes_xy_proportions,
-                            dpi=None) as fax:
-        yield fax
+def save_fig(path, filename):
+    Path(path).mkdir(parents=True, exist_ok=True)
+    if filename[-4:] not in ['.png', '.jpg', '.svg']:
+        filename = f"{filename}.png"
+
+    yield
+
+    plt.savefig(f"{path}/{filename}")
+    plt.show()
+    plt.close()
 
 
 def make_gif(directory, image_list_names, gif_name, delay=20):
