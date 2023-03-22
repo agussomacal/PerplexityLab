@@ -1,5 +1,4 @@
 import inspect
-import itertools
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -12,6 +11,7 @@ import seaborn as sns
 from makefun import with_signature
 
 from src.DataManager import DataManager, group, apply
+from src.file_utils import clean_str4saving
 from src.performance_utils import timeit, get_map_function
 
 INCHES_PER_LETTER = 0.11
@@ -24,15 +24,14 @@ def test_plot(plot_function):
         path = path.joinpath(folder)
         Path(path).mkdir(parents=True, exist_ok=True)
         plot_name = name + plot_function.__name__
-        plot_name = plot_name.replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace(",",
-                                                                                                          "").replace(
-            ".", "").replace(";", "").replace(":", "").replace(" ", "_")
+        plot_name = clean_str4saving(plot_name)
         plot_name = f"{path}/{plot_name}{format}"
         with timeit("Plot {}".format(plot_name)):
             with many_plots_context(N_subplots=1, pathname=plot_name, savefig=True,
                                     return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
                 fig, axes = fax
                 plot_function(fig=fig, ax=axes[0, 0], **kwargs)
+        return plot_name
 
     return decorated_func
 
@@ -55,10 +54,10 @@ def make_data_frames(data_manager: DataManager, var_names=[], group_by=[], **kwa
 
 
 def perplex_plot(plot_function):
-    def decorated_func(data_manager: DataManager, name="", folder="", plot_by=[], axes_by=[],
+    def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=[], axes_by=[],
                        axes_xy_proportions=(10, 8),
                        dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
-        path = data_manager.path.joinpath(folder)
+        path = data_manager.path.joinpath(folder) if path is None else Path(path)
         Path(path).mkdir(parents=True, exist_ok=True)
         plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
         axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
@@ -87,9 +86,7 @@ def perplex_plot(plot_function):
                                                   **specified_vars):
                 plot_name = name + plot_function.__name__ + "_" + "_".join(
                     ["{}{}".format(k, v) for k, v in grouping_vars.items()])
-                plot_name = plot_name.replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace(",",
-                                                                                                                  "").replace(
-                    ".", "").replace(";", "").replace(":", "").replace(" ", "_")
+                plot_name = clean_str4saving(plot_name)
                 plot_name = f"{path}/{plot_name}{format}"
                 if plot_again or not os.path.exists(plot_name):
                     yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
@@ -114,9 +111,9 @@ def perplex_plot(plot_function):
                     #     # ax.set_ylim(ylim)
                     #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
                     #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
+                    yield plot_name
 
-        for _ in get_map_function(num_cores)(parallel_func, iterator()):
-            pass
+        return [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
 
     return decorated_func
 
@@ -161,7 +158,7 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str, plot_fun
         if "y" in log:
             ax.set_yscale("log")
 
-    function_plot(data_manager, **kwargs)
+    return function_plot(data_manager, **kwargs)
 
 
 def correlation_plot(data_manager: DataManager, axes_var: str, val_1, val_2, value_var, log: str = "", **kwargs):
@@ -187,7 +184,7 @@ def correlation_plot(data_manager: DataManager, axes_var: str, val_1, val_2, val
     # not_specified_vars = not_specified_vars.difference(kwargs.keys())
     # not_specified_vars = not_specified_vars.difference([axes_var, value_var])
     # kwargs["plot_by"] = kwargs.get("plot_by", []) + list(not_specified_vars)
-    function_plot(data_manager, **{axes_var: [val_1, val_2]}, **kwargs)
+    return function_plot(data_manager, **{axes_var: [val_1, val_2]}, **kwargs)
 
 
 def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
@@ -206,6 +203,11 @@ def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
             return fig, ax
         else:
             return ax
+
+
+def get_sub_ax(ax, i):
+    nrows, ncols = ax.shape
+    return ax[i // ncols, i % ncols]
 
 
 @contextmanager
@@ -244,22 +246,3 @@ def make_gif(directory, image_list_names, gif_name, delay=20):
 
     os.system('convert -delay {} @{} {}'.format(delay, ftext, fp_out))  # On windows convert is 'magick'
     return fp_out
-
-
-# def make_gif(directory, image_names_list, gif_name, duration=200):
-#     # filepaths
-#     fp_in = "{}/*.png".format(directory)
-#     fp_out = "{}/{}.gif".format(os.path.dirname(directory), gif_name)
-#
-#     # https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
-#     img, *imgs = [Image.open(os.path.join(directory, f)) for f in image_names_list]
-#
-#     print('Doing gif')
-#     img.save(fp=fp_out, format='GIF', append_images=imgs,
-#              save_all=True, duration=duration, loop=0)
-#     os.remove(directory)
-
-
-def get_sub_ax(ax, i):
-    nrows, ncols = ax.shape
-    return ax[i // ncols, i % ncols]
