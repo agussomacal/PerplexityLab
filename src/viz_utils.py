@@ -1,5 +1,4 @@
 import inspect
-import itertools
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -12,6 +11,7 @@ import seaborn as sns
 from makefun import with_signature
 
 from src.DataManager import DataManager, group, apply
+from src.file_utils import clean_str4saving
 from src.performance_utils import timeit, get_map_function
 
 INCHES_PER_LETTER = 0.11
@@ -19,11 +19,45 @@ INCHES_PER_LABEL = 0.3
 LEGEND_EXTRA_PERCENTAGE_SPACE = 0.1
 
 
+def test_plot(plot_function):
+    def decorated_func(path: Path, name="", folder="", format=".png", axes_xy_proportions=(10, 8), dpi=None, **kwargs):
+        path = path.joinpath(folder)
+        Path(path).mkdir(parents=True, exist_ok=True)
+        plot_name = name + plot_function.__name__
+        plot_name = clean_str4saving(plot_name)
+        plot_name = f"{path}/{plot_name}{format}"
+        with timeit("Plot {}".format(plot_name)):
+            with many_plots_context(N_subplots=1, pathname=plot_name, savefig=True,
+                                    return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
+                fig, axes = fax
+                plot_function(fig=fig, ax=axes[0, 0], **kwargs)
+        return plot_name
+
+    return decorated_func
+
+
+def make_data_frames(data_manager: DataManager, var_names=[], group_by=[], **kwargs):
+    var_names = set(var_names)
+    group_by = set(group_by)
+    specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if k in data_manager.columns}
+    functions2apply = {k: v for k, v in kwargs.items() if
+                       k in var_names | group_by and k not in specified_vars.keys() and isinstance(v, Callable)
+                       and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
+
+    dm = apply(data_manager,
+               names=set(var_names).union(specified_vars.keys(), group_by).difference(functions2apply.keys()),
+               **functions2apply)
+    var_names.update(functions2apply.keys())
+
+    for grouping_vars, data2plot in group(dm, names=var_names.union(group_by), by=group_by, **specified_vars):
+        yield grouping_vars, pd.DataFrame.from_dict(data2plot)
+
+
 def perplex_plot(plot_function):
-    def decorated_func(data_manager: DataManager, name="", folder="", plot_by=[], axes_by=[],
+    def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=[], axes_by=[],
                        axes_xy_proportions=(10, 8),
                        dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
-        path = data_manager.path.joinpath(folder)
+        path = data_manager.path.joinpath(folder) if path is None else Path(path)
         Path(path).mkdir(parents=True, exist_ok=True)
         plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
         axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
@@ -52,9 +86,7 @@ def perplex_plot(plot_function):
                                                   **specified_vars):
                 plot_name = name + plot_function.__name__ + "_" + "_".join(
                     ["{}{}".format(k, v) for k, v in grouping_vars.items()])
-                plot_name = plot_name.replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace(",",
-                                                                                                                  "").replace(
-                    ".", "").replace(";", "").replace(":", "").replace(" ", "_")
+                plot_name = clean_str4saving(plot_name)
                 plot_name = f"{path}/{plot_name}{format}"
                 if plot_again or not os.path.exists(plot_name):
                     yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
@@ -65,15 +97,23 @@ def perplex_plot(plot_function):
                 with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=True,
                                         return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
                     fig, axes = fax
+                    # ylim = tuple()
                     for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
                         ax = get_sub_ax(axes, i)
                         ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
                         plot_function(fig=fig, ax=ax,
                                       **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
                                       **extra_arguments)
+                        # ylim = ylim + ax.get_ylim()
+                        # ylim = (min(ylim), max(ylim))
+                    # for i, _ in enumerate(data2plot_per_plot):
+                    #     ax = get_sub_ax(axes, i)
+                    #     # ax.set_ylim(ylim)
+                    #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
+                    #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
+                    yield plot_name
 
-        for _ in get_map_function(num_cores)(parallel_func, iterator()):
-            pass
+        return [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
 
     return decorated_func
 
@@ -89,27 +129,36 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str, plot_fun
         for other_plot in [other_plot_funcs] if isinstance(other_plot_funcs, Callable) else other_plot_funcs:
             other_plot(**{k: vars4plot[k] for k in inspect.getfullargspec(other_plot_funcs).args})
 
-        if "data" in inspect.getfullargspec(plot_func).args:
-            data = pd.DataFrame.from_dict(
-                {
-                    x: vars4plot[x],
-                    y: vars4plot[y],
-                    label: vars4plot[label],
-                }
-            )
-            data.sort_values(by=x)
-            plot_func(data=data, x=x, y=y, hue=label, ax=ax)
-        else:
-            for x_i, y_i, label_i in zip(vars4plot[x], vars4plot[y], vars4plot[label]):
-                plot_func(ax, x_i, y_i, label=label_i)
-            ax.legend()
+        data = pd.DataFrame.from_dict(
+            {
+                x: vars4plot[x],
+                y: vars4plot[y],
+                label: vars4plot[label],
+            }
+        )
+        data.sort_values(by=x)
+        plot_func(data=data, x=x, y=y, hue=label, ax=ax)
+        # if "data" in inspect.getfullargspec(plot_func).args:
+        #     data = pd.DataFrame.from_dict(
+        #         {
+        #             x: vars4plot[x],
+        #             y: vars4plot[y],
+        #             label: vars4plot[label],
+        #         }
+        #     )
+        #     data.sort_values(by=x)
+        #     plot_func(data=data, x=x, y=y, hue=label, ax=ax)
+        # else:
+        #     for x_i, y_i, label_i in zip(vars4plot[x], vars4plot[y], vars4plot[label]):
+        #         plot_func(ax, x_i, y_i, label=label_i)
+        #     ax.legend()
 
         if "x" in log:
             ax.set_xscale("log")
         if "y" in log:
             ax.set_yscale("log")
 
-    function_plot(data_manager, **kwargs)
+    return function_plot(data_manager, **kwargs)
 
 
 def correlation_plot(data_manager: DataManager, axes_var: str, val_1, val_2, value_var, log: str = "", **kwargs):
@@ -135,7 +184,7 @@ def correlation_plot(data_manager: DataManager, axes_var: str, val_1, val_2, val
     # not_specified_vars = not_specified_vars.difference(kwargs.keys())
     # not_specified_vars = not_specified_vars.difference([axes_var, value_var])
     # kwargs["plot_by"] = kwargs.get("plot_by", []) + list(not_specified_vars)
-    function_plot(data_manager, **{axes_var: [val_1, val_2]}, **kwargs)
+    return function_plot(data_manager, **{axes_var: [val_1, val_2]}, **kwargs)
 
 
 def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
@@ -154,6 +203,11 @@ def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
             return fig, ax
         else:
             return ax
+
+
+def get_sub_ax(ax, i):
+    nrows, ncols = ax.shape
+    return ax[i // ncols, i % ncols]
 
 
 @contextmanager
@@ -198,22 +252,3 @@ def make_gif(directory, image_list_names, gif_name, delay=20):
 
     os.system('convert -delay {} @{} {}'.format(delay, ftext, fp_out))  # On windows convert is 'magick'
     return fp_out
-
-
-# def make_gif(directory, image_names_list, gif_name, duration=200):
-#     # filepaths
-#     fp_in = "{}/*.png".format(directory)
-#     fp_out = "{}/{}.gif".format(os.path.dirname(directory), gif_name)
-#
-#     # https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
-#     img, *imgs = [Image.open(os.path.join(directory, f)) for f in image_names_list]
-#
-#     print('Doing gif')
-#     img.save(fp=fp_out, format='GIF', append_images=imgs,
-#              save_all=True, duration=duration, loop=0)
-#     os.remove(directory)
-
-
-def get_sub_ax(ax, i):
-    nrows, ncols = ax.shape
-    return ax[i // ncols, i % ncols]

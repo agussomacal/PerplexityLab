@@ -234,13 +234,13 @@ def dmfilter(datamanager: Union[DataManager, Dict[str, List]], names: Union[List
     return {k: [sub_dataset[k][i] for i in accepted_indexes] for k in names}
 
 
-def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], by: List, **filters: List) \
+def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], by: Union[Set, List], **filters: List) \
         -> Generator[Tuple[Dict[str, List], Dict[str, List]], None, None]:
     assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."
     sub_dataset = dmfilter(datamanager, names=set(names).union(by), **filters)
 
     if len(by) > 0:
-        length = len(sub_dataset[by[0]])
+        length = len(sub_dataset[next(iter(by))])
         order = sorted(zip(range(length), map(str, zip(*[sub_dataset[k] for k in by]))), key=lambda x: x[1])
         for _, indexes in itertools.groupby(order, key=lambda x: x[1]):
             indexes = [i[0] for i in indexes]

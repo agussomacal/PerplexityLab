@@ -5,11 +5,12 @@ import numpy as np
 import seaborn as sns
 
 from src.DataManager import DataManager, JOBLIB
+from src.LaTexReports import Code2LatexConnector
 from src.LabPipeline import LabPipeline, FunctionBlock
-from src.viz_utils import squared_subplots, generic_plot, make_data_frames
+from src.viz_utils import generic_plot
 
 
-class TestVizUtils(unittest.TestCase):
+class TestLaTexReports(unittest.TestCase):
     def setUp(self) -> None:
         self.data_manager = DataManager(
             path=os.path.abspath(os.path.join(__file__, os.pardir)),
@@ -25,16 +26,15 @@ class TestVizUtils(unittest.TestCase):
                                         num_cores=1, forget=True, save_on_iteration=False,
                                         x=np.linspace(-1, 1), k=[0, 1])
 
-    def test_plot_versus(self):
-        generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
-                     z=lambda x, y: y / x, axes_by=["k"])
+    def test_compile_template(self):
+        report = Code2LatexConnector(path=self.data_manager.path, filename='Report')
+        report.create_template()
 
-    def test_make_df(self):
-        gv, df = list(
-            zip(*make_data_frames(self.data_manager, var_names=["x", "z"], group_by=["k"], z=lambda x, y: y / x,
-                                  preprocessing="squared")))
-        assert len(gv) == len(self.data_manager.parameters["k"].values)
-        assert df[0].shape == (len(self.data_manager.parameters["x"].values), 3)
+        generic_plot(self.data_manager, path=report.get_plot_path(),
+                     x="x", y="z", label="preprocessing", plot_func=sns.lineplot, z=lambda x, y: y / x,
+                     axes_by=["k"])
+
+        report.compile()
 
     if __name__ == '__main__':
         unittest.main()
