@@ -6,7 +6,7 @@ import seaborn as sns
 
 from src.DataManager import DataManager, JOBLIB
 from src.LabPipeline import LabPipeline, FunctionBlock
-from src.viz_utils import squared_subplots, generic_plot
+from src.viz_utils import squared_subplots, generic_plot, make_data_frames
 
 
 class TestUtilsSquaredSubplots(unittest.TestCase):
@@ -16,17 +16,6 @@ class TestUtilsSquaredSubplots(unittest.TestCase):
             name="TestDataManager",
             format=JOBLIB
         )
-
-    def test_squared_subplots(self):
-        # assert squared_subplots(1).shape == (1, 1)
-        # assert squared_subplots(2).shape == (1, 2)
-        # assert squared_subplots(3).shape == (1, 3)
-        # assert squared_subplots(4).shape == (2, 2)
-        # assert squared_subplots(5).shape == (2, 3)
-        # assert squared_subplots(6).shape == (2, 3)
-        pass
-
-    def test_plot_versus(self):
         lab = LabPipeline()
         lab.define_new_block_of_functions("preprocessing",
                                           FunctionBlock(name="squared", function=lambda x, k: {"y": x ** 2 + k}),
@@ -36,9 +25,16 @@ class TestUtilsSquaredSubplots(unittest.TestCase):
                                         num_cores=1, forget=True, save_on_iteration=False,
                                         x=np.linspace(-1, 1), k=[0, 1])
 
-        # generic_plot(x="x", y="y", label="preprocessing", seaborn_func=sns.lineplot)(self.data_manager, axes_by=["k"])
+    def test_plot_versus(self):
         generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
                      z=lambda x, y: y / x, axes_by=["k"])
 
-        if __name__ == '__main__':
-            unittest.main()
+    def test_make_df(self):
+        gv, df = list(
+            zip(*make_data_frames(self.data_manager, var_names=["x", "z"], group_by=["k"], z=lambda x, y: y / x,
+                                  preprocessing="squared")))
+        assert len(gv) == len(self.data_manager.parameters["k"].values)
+        assert df[0].shape == (len(self.data_manager.parameters["x"].values), 3)
+
+    if __name__ == '__main__':
+        unittest.main()
