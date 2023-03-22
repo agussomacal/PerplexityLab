@@ -111,7 +111,7 @@ def perplex_plot(plot_function):
                     #     # ax.set_ylim(ylim)
                     #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
                     #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
-                    yield plot_name
+                    return plot_name
 
         return [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
 
@@ -122,7 +122,7 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str, plot_fun
                  other_plot_funcs=(), log: str = "", **kwargs):
     # TODO: a way to agregate data instead of splitting depending if sns or plt
     @perplex_plot
-    @with_signature(f"plot_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label})})")
+    @with_signature(f"plot_{plot_func.__name__}_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label})})")
     def function_plot(**vars4plot):
         ax = vars4plot["ax"]
 
@@ -136,7 +136,7 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str, plot_fun
                 label: vars4plot[label],
             }
         )
-        data.sort_values(by=x)
+        data.sort_values(by=[label, x])
         plot_func(data=data, x=x, y=y, hue=label, ax=ax)
         # if "data" in inspect.getfullargspec(plot_func).args:
         #     data = pd.DataFrame.from_dict(
@@ -228,7 +228,7 @@ def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axe
 
 
 @contextmanager
-def save_fig(path, filename):
+def save_fig(path, filename, show=False):
     Path(path).mkdir(parents=True, exist_ok=True)
     if filename[-4:] not in ['.png', '.jpg', '.svg']:
         filename = f"{filename}.png"
@@ -236,7 +236,8 @@ def save_fig(path, filename):
     yield
 
     plt.savefig(f"{path}/{filename}")
-    plt.show()
+    if show:
+        plt.show()
     plt.close()
 
 

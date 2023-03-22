@@ -60,7 +60,7 @@ def common_ancestors(names, data: Dict[str, Union[DatasetParam, DatasetFBlock, D
 
 
 class DataManager:
-    def __init__(self, path: Union[str, Path], name: str, format=HD5):
+    def __init__(self, path: Union[str, Path], name: str, format=JOBLIB):
         self.name = name
         self.path = Path(path).joinpath(name)
         self.path.mkdir(parents=True, exist_ok=True)

@@ -26,8 +26,10 @@ class TestVizUtils(unittest.TestCase):
                                         x=np.linspace(-1, 1), k=[0, 1])
 
     def test_plot_versus(self):
-        generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
+        paths = generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
                      z=lambda x, y: y / x, axes_by=["k"])
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
 
     def test_make_df(self):
         gv, df = list(
