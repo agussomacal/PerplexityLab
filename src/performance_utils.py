@@ -1,4 +1,6 @@
+import inspect
 import time
+from collections import OrderedDict
 from contextlib import contextmanager
 from typing import Callable
 
@@ -47,3 +49,11 @@ def is_string_int(s):
 
 def get_appropiate_number_of_workers(workers, n):
     return int(np.max((1, np.min((cpu_count() - 1, n, workers)))))
+
+
+def filter_dict(keys, **kwargs):
+    return OrderedDict([(k, v) for k, v in kwargs.items() if k in keys])
+
+
+def partial_filter(function, **kwargs):
+    return function(**filter_dict(inspect.getfullargspec(function).args, **kwargs))
