@@ -118,25 +118,47 @@ def perplex_plot(plot_function):
     return decorated_func
 
 
-def generic_plot(data_manager: DataManager, x: str, y: str, label: str, plot_func: Callable = sns.lineplot,
+def unfold(dict_of_lists):
+    unfolded_data = {k: [] for k in dict_of_lists.keys()}
+    for values in zip(*dict_of_lists.values()):
+        lengths = set([len(v) for v in values if not isinstance(v, str) and hasattr(v, "__len__")])
+        if len(lengths) > 1:
+            raise Exception(f"Can not unfold data with different lengths: {lengths}")
+        elif len(lengths) == 1:
+            length = lengths.pop()
+        else:
+            length = 1
+
+        for k, v in zip(dict_of_lists.keys(), values):
+            if not isinstance(v, str) and hasattr(v, "__len__"):
+                unfolded_data[k] += list(v)
+            else:
+                unfolded_data[k] += [v] * length
+
+    return unfolded_data
+
+
+def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, plot_func: Callable = sns.lineplot,
                  other_plot_funcs=(), log: str = "", **kwargs):
     # TODO: a way to agregate data instead of splitting depending if sns or plt
     @perplex_plot
-    @with_signature(f"plot_{plot_func.__name__}_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label})})")
+    @with_signature(
+        f"plot_{plot_func.__name__}_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label}.difference([None]))})")
     def function_plot(**vars4plot):
         ax = vars4plot["ax"]
 
         for other_plot in [other_plot_funcs] if isinstance(other_plot_funcs, Callable) else other_plot_funcs:
             other_plot(**{k: vars4plot[k] for k in inspect.getfullargspec(other_plot_funcs).args})
 
-        data = pd.DataFrame.from_dict(
-            {
-                x: vars4plot[x],
-                y: vars4plot[y],
-                label: vars4plot[label],
-            }
-        )
-        data.sort_values(by=[label, x])
+        dict4plot = {
+            x: vars4plot[x],
+            y: vars4plot[y],
+        }
+        if label is not None:
+            dict4plot[label] = vars4plot[label]
+
+        data = pd.DataFrame.from_dict(unfold(dict4plot))
+        data.sort_values(by=([label] if label is not None else [])+[x])
         plot_func(data=data, x=x, y=y, hue=label, ax=ax)
         # if "data" in inspect.getfullargspec(plot_func).args:
         #     data = pd.DataFrame.from_dict(

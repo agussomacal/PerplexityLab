@@ -31,6 +31,13 @@ class TestVizUtils(unittest.TestCase):
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
 
+
+    def test_plot_versus_boxplot(self):
+        paths = generic_plot(self.data_manager, x="preprocessing", y="z", plot_func=sns.boxplot,
+                     z=lambda x, y: y / x, axes_by=["k"])
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+
     def test_make_df(self):
         gv, df = list(
             zip(*make_data_frames(self.data_manager, var_names=["x", "z"], group_by=["k"], z=lambda x, y: y / x,
