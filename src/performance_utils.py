@@ -1,4 +1,5 @@
 import inspect
+import logging
 import time
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -13,7 +14,7 @@ def timeit(msg):
     print(msg, end='')
     t0 = time.time()
     yield
-    print('\r -> duracion {}: {:.2f}s'.format(msg, time.time() - t0))
+    logging.info('\r -> duracion {}: {:.2f}s'.format(msg, time.time() - t0))
 
 
 def calculate_time(func: Callable):
@@ -22,7 +23,7 @@ def calculate_time(func: Callable):
         t0 = time.time()
         res = func(*args, **kwargs)
         t = time.time() - t0
-        print(f"time spent: {t}")
+        logging.info(f"time spent: {t}")
         return t, res
 
     return new_func
