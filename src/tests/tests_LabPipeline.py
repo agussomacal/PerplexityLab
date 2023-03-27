@@ -69,3 +69,31 @@ class TestDataManager(unittest.TestCase):
         assert np.allclose(self.data_manager["y"],
                            np.array(self.data_manager["x"]) ** 2 + np.array(self.data_manager["k"]))
         assert len(self.data_manager["y"]) == 9
+
+    def test_not_save(self):
+        lab = LabPipeline()
+        lab.define_new_block_of_functions("preprocessing",
+                                          FunctionBlock(name="squared", function=lambda x, k: {"y": x ** 2 + k}),
+                                          save=False)
+
+        k = np.array([1.0, 2.0, 3.0])
+        x = np.array([1.0, 2.0, 5.0])
+        self.data_manager = lab.execute(self.data_manager, num_cores=-1, forget=True, x=x.tolist(), k=k.tolist())
+
+        assert np.allclose(self.data_manager["y"],
+                           np.array(self.data_manager["x"]) ** 2 + np.array(self.data_manager["k"]))
+        assert len(self.data_manager["y"]) == 9
+        self.data_manager.save()
+        self.data_manager.reset()
+        self.data_manager.load()
+
+        assert len(self.data_manager.database) == 0
+
+        lab.define_new_block_of_functions("experiment",
+                                          FunctionBlock(name="attack", function=lambda y, k: {"u": y ** 2 + k}),
+                                          save=True)
+        self.data_manager = lab.execute(self.data_manager, num_cores=-1, forget=True, x=x.tolist(), k=k.tolist())
+        self.data_manager.save()
+        self.data_manager.reset()
+        self.data_manager.load()
+        assert len(self.data_manager.database) > 0

@@ -15,13 +15,14 @@ class LabPipeline:
     def __init__(self):
         self.experimental_graph = []
 
-    def define_new_block_of_functions(self, name, *functions: Union[FunctionBlock, Callable]):
+    def define_new_block_of_functions(self, name, *functions: Union[FunctionBlock, Callable], **kwargs):
         """
         :param name: name of the layer
         :param functions: tuples of name and corresponding function that will be executed in parallel
         (independently) at this level.
         :return:
         """
+        save = True if "save" not in kwargs.keys() else kwargs["save"]
         if all([isinstance(function, Callable) for function in functions]):
             functions = [FunctionBlock(name=f.__name__, function=f) for f in functions]
 
@@ -30,7 +31,7 @@ class LabPipeline:
         assert all([isinstance(function.name, str) for function in functions]), "function name should be str."
         assert all([isinstance(function.function, Callable) for function in functions]), \
             "function name should be Callable."
-        self.experimental_graph.append((name, functions))
+        self.experimental_graph.append((name, save, functions))
 
     def execute(self, datamanager: DataManager, num_cores=1, forget=False, recalculate=False, save_on_iteration=None,
                 verbose=0, **params):
@@ -39,7 +40,7 @@ class LabPipeline:
         else:
             datamanager.load()
 
-        for function_block, functions in self.experimental_graph:
+        for function_block, save, functions in self.experimental_graph:
             # Generator to avoid storing in memory the unfolded data which could contain big duplicated variables.
             def input_generator():
                 for function_name, function in functions:
@@ -90,7 +91,7 @@ class LabPipeline:
                 for i, (input_params, input_funcs, f_name, f_result) in tqdm(enumerate(
                         get_map_function(num_cores)(parallel_func, input_list)),
                         desc="Doing {}...".format(function_block)):
-                    datamanager.add_result(input_params, input_funcs, function_block, f_name, f_result)
+                    datamanager.add_result(input_params, input_funcs, function_block, f_name, f_result, save)
                     # save after each result only if certain iterations passed
                     if save_on_iteration is not None and save_on_iteration > 0 \
                             and (i % save_on_iteration) == (-1 % save_on_iteration):

@@ -75,6 +75,8 @@ class DataManager:
         self.function_blocks = defaultdict(DatasetFBlock)
         self.variables = defaultdict(DatasetVar)
 
+        self.not_save_vars = set()
+
         self.database = benedict()
 
     @property
@@ -108,7 +110,7 @@ class DataManager:
             output_funcs = {**input_funcs, **{function_block: function_name}}
             return [subset_dict(input_params, input_params.keys()),
                     subset_dict(output_funcs, output_funcs.keys())] \
-                   in self.database
+                in self.database
         else:
             raise Exception("is_in_database not implemented for that combination of Nones")
 
@@ -125,7 +127,7 @@ class DataManager:
             yield dict(), {variable: input_params[variable] for variable in variables}
 
     def add_result(self, input_params: Dict, input_funcs: Dict, function_block: str, function_name: str,
-                   function_result: Dict):
+                   function_result: Dict, save=True):
         """
         Add new (or override old) result and actualize information on variables not previously taken into account.
         Here the tree structure of the database is defined.
@@ -148,11 +150,13 @@ class DataManager:
         self.function_blocks[function_block].dependencies.update(output_funcs.keys())
         # add the variables dependencies.
         for k, v in function_result.items():
+            if not save:
+                self.not_save_vars.add(k)
             self.variables[k].dependencies.update(output_funcs.keys())
             self.variables[k].root.update(input_params.keys())
         # add the result.
         self.database[subset_dict(input_params, input_params.keys()),
-                      subset_dict(output_funcs, output_funcs.keys())] = function_result
+        subset_dict(output_funcs, output_funcs.keys())] = function_result
 
     def __getitem__(self, item):
         if isinstance(item, (set, list, tuple)):
@@ -184,7 +188,10 @@ class DataManager:
 
     def save(self):
         if self.format == JOBLIB:
-            joblib.dump((self.database, self.parameters, self.function_blocks, self.variables), self.path_to_data)
+            joblib.dump((
+                self.database.flatten("/").filter(lambda k, v: k.split("/")[-1] not in self.not_save_vars).unflatten(),
+                self.parameters, self.function_blocks, self.variables),
+                self.path_to_data)
         # elif self.format == HD5:
         #     with h5py.File(self.path_to_data, 'w') as f:
         #         f.create_dataset("database", data=self.database)
@@ -234,7 +241,8 @@ def dmfilter(datamanager: Union[DataManager, Dict[str, List]], names: Union[List
     return {k: [sub_dataset[k][i] for i in accepted_indexes] for k in names}
 
 
-def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], by: Union[Set, List], **filters: List) \
+def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], by: Union[Set, List],
+          **filters: List) \
         -> Generator[Tuple[Dict[str, List], Dict[str, List]], None, None]:
     assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."
     sub_dataset = dmfilter(datamanager, names=set(names).union(by), **filters)
@@ -245,7 +253,7 @@ def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, S
         for _, indexes in itertools.groupby(order, key=lambda x: x[1]):
             indexes = [i[0] for i in indexes]
             yield OrderedDict([(k, sub_dataset[k][indexes[0]]) for k in by]), \
-                  OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
+                OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
     else:
         yield dict(), OrderedDict([(k, sub_dataset[k]) for k in names])
 
