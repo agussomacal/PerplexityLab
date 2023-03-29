@@ -189,7 +189,8 @@ class DataManager:
     def save(self):
         if self.format == JOBLIB:
             joblib.dump((
-                self.database.flatten("/").filter(lambda k, v: k.split("/")[-1] not in self.not_save_vars).unflatten(),
+                # self.database.flatten("/").filter(lambda k, v: k.split("/")[-1] not in self.not_save_vars).unflatten(),
+                self.database,
                 self.parameters, self.function_blocks, self.variables),
                 self.path_to_data)
         # elif self.format == HD5:

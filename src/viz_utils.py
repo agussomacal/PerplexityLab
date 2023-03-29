@@ -111,6 +111,7 @@ def perplex_plot(plot_function):
                     #     # ax.set_ylim(ylim)
                     #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
                     #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
+                    plt.tight_layout()
                     return plot_name
 
         return [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
@@ -139,11 +140,11 @@ def unfold(dict_of_lists):
 
 
 def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, plot_func: Callable = sns.lineplot,
-                 other_plot_funcs=(), log: str = "", **kwargs):
+                 other_plot_funcs=(), log: str = "", sort_by=[],  **kwargs):
     # TODO: a way to agregate data instead of splitting depending if sns or plt
     @perplex_plot
     @with_signature(
-        f"plot_{plot_func.__name__}_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label}.difference([None]))})")
+        f"plot_{plot_func.__name__}_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label}.union(sort_by).difference([None]))})")
     def function_plot(**vars4plot):
         ax = vars4plot["ax"]
 
@@ -156,9 +157,12 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
         }
         if label is not None:
             dict4plot[label] = vars4plot[label]
+        for var in sort_by:
+            dict4plot[var] = vars4plot[var]
 
         data = pd.DataFrame.from_dict(unfold(dict4plot))
-        data.sort_values(by=([label] if label is not None else [])+[x])
+        # data = pd.DataFrame.from_dict(unfold(dict4plot))
+        data.sort_values(by=sort_by+([label] if label is not None else [])+[x])
         plot_func(data=data, x=x, y=y, hue=label, ax=ax)
         # if "data" in inspect.getfullargspec(plot_func).args:
         #     data = pd.DataFrame.from_dict(

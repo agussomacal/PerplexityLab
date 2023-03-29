@@ -3,6 +3,7 @@ import logging
 import time
 from collections import OrderedDict
 from contextlib import contextmanager
+from functools import partial
 from typing import Callable
 
 import numpy as np
@@ -58,3 +59,20 @@ def filter_dict(keys, **kwargs):
 
 def partial_filter(function, **kwargs):
     return function(**filter_dict(inspect.getfullargspec(function).args, **kwargs))
+
+
+def if_true_str(var, var_name, prefix="", end=""):
+    return (prefix + var_name + end) if var else ""
+
+
+class NamedPartial:
+    def __init__(self, func, *args, **kwargs):
+        self.f = partial(func, *args, **kwargs)
+        self.__name__ = func.__name__ + "_" + "_".join(list(map(str, args))) + "_".join(
+            ["{}{}".format(k, v) for k, v in kwargs.items()])
+
+    def __call__(self, *args, **kwargs):
+        return self.f(*args, **kwargs)
+
+    def __str__(self):
+        return self.__name__
