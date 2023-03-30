@@ -1,4 +1,5 @@
 import inspect
+import itertools
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -10,7 +11,7 @@ import pandas as pd
 import seaborn as sns
 from makefun import with_signature
 
-from src.DataManager import DataManager, group, apply
+from src.DataManager import DataManager, group, apply, dmfilter
 from src.file_utils import clean_str4saving
 from src.performance_utils import timeit, get_map_function
 
@@ -19,7 +20,7 @@ INCHES_PER_LABEL = 0.3
 LEGEND_EXTRA_PERCENTAGE_SPACE = 0.1
 
 
-def test_plot(plot_function):
+def plot_test(plot_function):
     def decorated_func(path: Path, name="", folder="", format=".png", axes_xy_proportions=(10, 8), dpi=None, **kwargs):
         path = path.joinpath(folder)
         Path(path).mkdir(parents=True, exist_ok=True)
@@ -72,13 +73,17 @@ def perplex_plot(plot_function):
                            k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
                                v, Callable)
                            and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
+        functions2apply_var_needs = set(itertools.chain(*[
+            inspect.getfullargspec(v).args for k, v in kwargs.items() if
+            k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                v, Callable) and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)]))
         extra_arguments = {k: v for k, v in kwargs.items() if
                            k in function_arg_names and k not in specified_vars.keys()
                            and k not in functions2apply.keys()}
-
-        dm = apply(data_manager,
-                   names=vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(functions2apply.keys()),
-                   **functions2apply)
+        names = vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(functions2apply.keys()).union(
+            functions2apply_var_needs)
+        dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
+        dm = apply(dm, names=names, **functions2apply)  # now apply the functions
         vars4plot.update(functions2apply.keys())
 
         def iterator():
@@ -140,7 +145,7 @@ def unfold(dict_of_lists):
 
 
 def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, plot_func: Callable = sns.lineplot,
-                 other_plot_funcs=(), log: str = "", sort_by=[],  **kwargs):
+                 other_plot_funcs=(), log: str = "", sort_by=[], ylim=None, xlim=None, **kwargs):
     # TODO: a way to agregate data instead of splitting depending if sns or plt
     @perplex_plot
     @with_signature(
@@ -162,7 +167,7 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
 
         data = pd.DataFrame.from_dict(unfold(dict4plot))
         # data = pd.DataFrame.from_dict(unfold(dict4plot))
-        data.sort_values(by=sort_by+([label] if label is not None else [])+[x])
+        data.sort_values(by=sort_by + ([label] if label is not None else []) + [x])
         plot_func(data=data, x=x, y=y, hue=label, ax=ax)
         # if "data" in inspect.getfullargspec(plot_func).args:
         #     data = pd.DataFrame.from_dict(
@@ -183,6 +188,11 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
             ax.set_xscale("log")
         if "y" in log:
             ax.set_yscale("log")
+
+        if xlim is not None:
+            ax.set_xlim(xlim)
+        if ylim is not None:
+            ax.set_ylim(ylim)
 
     return function_plot(data_manager, **kwargs)
 

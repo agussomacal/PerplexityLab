@@ -259,7 +259,7 @@ def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, S
         yield dict(), OrderedDict([(k, sub_dataset[k]) for k in names])
 
 
-def apply(datamanager: DataManager, names: Union[Set[str], List[str]], **kwargs: Callable):
+def apply(datamanager: Union[DataManager, Dict], names: Union[Set[str], List[str]], **kwargs: Callable):
     """
 
     :param datamanager:
@@ -270,7 +270,7 @@ def apply(datamanager: DataManager, names: Union[Set[str], List[str]], **kwargs:
     assert all(map(lambda x: isinstance(x, Callable), kwargs.values())), "all **kwargs should be callables."
     variables_for_callables = set(
         itertools.chain(*[inspect.getfullargspec(function).args for function in kwargs.values()]))
-    sub_dataset = datamanager[variables_for_callables.union(names)]
+    sub_dataset = get_sub_dataset(datamanager, variables_for_callables.union(names))
     length = len(list(sub_dataset.values())[0])
     out_dict = dict()
     for function_name, function in kwargs.items():

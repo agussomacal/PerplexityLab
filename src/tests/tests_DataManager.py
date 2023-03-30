@@ -104,6 +104,9 @@ class TestDataManager(unittest.TestCase):
                            function_name="f_name", function_result={"res": 1})
         d = apply(self.dm, names=["a"], sqa=lambda a: a ** 2)
         assert np.all(np.array(d["a"]) ** 2 == np.array(d["sqa"]))
+        # test if input is dic of lists
+        d = apply(self.dm[ALL], names=["a"], sqa=lambda a: a ** 2)
+        assert np.all(np.array(d["a"]) ** 2 == np.array(d["sqa"]))
 
     if __name__ == '__main__':
         unittest.main()
