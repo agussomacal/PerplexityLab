@@ -1,11 +1,15 @@
 import inspect
 import logging
+import os
+import pickle
 import time
 from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partial
+from pathlib import Path
 from typing import Callable
 
+import joblib
 import numpy as np
 from pathos.multiprocessing import Pool, cpu_count
 
@@ -76,3 +80,38 @@ class NamedPartial:
 
     def __str__(self):
         return self.__name__
+
+
+def if_exist_load_else_do(do_func):
+    def decorated_func(path, filename=None, file_format="joblib", recalculate=False, *args, **kwargs):
+        Path(path).mkdir(parents=True)
+        filename = do_func.__name__ if filename is None else filename
+        filepath = f"{path}/{filename}.{file_format}"
+        if recalculate or not os.path.exists(filepath):
+            with timeit(f"Processing {filename}:"):
+                # Projet points into graph edges
+                data = do_func(*args, **kwargs)
+
+                if "npy" in file_format:
+                    np.save(filepath, data)
+                elif "pickle" in file_format:
+                    with open(filepath, "r") as f:
+                        pickle.dump(data, f)
+                elif "joblib" in file_format:
+                    data = joblib.dump(data, filename)
+                else:
+                    raise Exception(f"Format {file_format} not implemented.")
+        else:
+            with timeit(f"Loading pre-processed {filename}:"):
+                if "npy" in file_format:
+                    data = np.load(filepath)
+                elif "pickle" in file_format:
+                    with open(filepath, "r") as f:
+                        data = pickle.load(f)
+                elif "joblib" in file_format:
+                    data = joblib.load(filename)
+                else:
+                    raise Exception(f"Format {file_format} not implemented.")
+        return data
+
+    return decorated_func
