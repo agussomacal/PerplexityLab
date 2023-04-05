@@ -59,73 +59,70 @@ def perplex_plot(plot_function):
     def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=[], axes_by=[],
                        axes_xy_proportions=(10, 8),
                        dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
-        data_manager.set_emissions_tracker_params("figures")
-        tracker = Tracker()
-        tracker.start()
 
-        path = data_manager.path.joinpath(folder) if path is None else Path(path)
-        Path(path).mkdir(parents=True, exist_ok=True)
-        plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
-        axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
+        with data_manager.track_emissions("figures"):
+            path = data_manager.path.joinpath(folder) if path is None else Path(path)
+            Path(path).mkdir(parents=True, exist_ok=True)
+            plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
+            axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
 
-        function_arg_names = inspect.getfullargspec(plot_function).args
-        assert len({"fig", "ax"}.intersection(
-            function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
-                                       "function but they were not found: {}".format(function_arg_names)
-        vars4plot = set(function_arg_names).intersection(data_manager.columns)
-        specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if k in data_manager.columns}
-        functions2apply = {k: v for k, v in kwargs.items() if
-                           k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
-                               v, Callable)
-                           and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
-        functions2apply_var_needs = set(itertools.chain(*[
-            inspect.getfullargspec(v).args for k, v in kwargs.items() if
-            k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
-                v, Callable) and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)]))
-        extra_arguments = {k: v for k, v in kwargs.items() if
-                           k in function_arg_names and k not in specified_vars.keys()
-                           and k not in functions2apply.keys()}
-        names = vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(functions2apply.keys()).union(
-            functions2apply_var_needs)
-        dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
-        dm = apply(dm, names=names, **functions2apply)  # now apply the functions
-        vars4plot.update(functions2apply.keys())
+            function_arg_names = inspect.getfullargspec(plot_function).args
+            assert len({"fig", "ax"}.intersection(
+                function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
+                                           "function but they were not found: {}".format(function_arg_names)
+            vars4plot = set(function_arg_names).intersection(data_manager.columns)
+            specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if k in data_manager.columns}
+            functions2apply = {k: v for k, v in kwargs.items() if
+                               k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                                   v, Callable)
+                               and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
+            functions2apply_var_needs = set(itertools.chain(*[
+                inspect.getfullargspec(v).args for k, v in kwargs.items() if
+                k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                    v, Callable) and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)]))
+            extra_arguments = {k: v for k, v in kwargs.items() if
+                               k in function_arg_names and k not in specified_vars.keys()
+                               and k not in functions2apply.keys()}
+            names = vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(functions2apply.keys()).union(
+                functions2apply_var_needs)
+            dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
+            dm = apply(dm, names=names, **functions2apply)  # now apply the functions
+            vars4plot.update(functions2apply.keys())
 
-        def iterator():
-            for grouping_vars, data2plot in group(dm, names=vars4plot.union(plot_by, axes_by), by=plot_by,
-                                                  **specified_vars):
-                plot_name = name + plot_function.__name__ + "_" + "_".join(
-                    ["{}{}".format(k, v) for k, v in grouping_vars.items()])
-                plot_name = clean_str4saving(plot_name)
-                plot_name = f"{path}/{plot_name}{format}"
-                if plot_again or not os.path.exists(plot_name):
-                    yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
+            def iterator():
+                for grouping_vars, data2plot in group(dm, names=vars4plot.union(plot_by, axes_by), by=plot_by,
+                                                      **specified_vars):
+                    plot_name = name + plot_function.__name__ + "_" + "_".join(
+                        ["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                    plot_name = clean_str4saving(plot_name)
+                    plot_name = f"{path}/{plot_name}{format}"
+                    if plot_again or not os.path.exists(plot_name):
+                        yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
 
-        def parallel_func(args):
-            data2plot_per_plot, plot_name = args
-            with timeit("Plot {}".format(plot_name)):
-                with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=True,
-                                        return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
-                    fig, axes = fax
-                    # ylim = tuple()
-                    for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
-                        ax = get_sub_ax(axes, i)
-                        ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
-                        plot_function(fig=fig, ax=ax,
-                                      **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
-                                      **extra_arguments)
-                        # ylim = ylim + ax.get_ylim()
-                        # ylim = (min(ylim), max(ylim))
-                    # for i, _ in enumerate(data2plot_per_plot):
-                    #     ax = get_sub_ax(axes, i)
-                    #     # ax.set_ylim(ylim)
-                    #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
-                    #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
-                    plt.tight_layout()
-                    return plot_name
+            def parallel_func(args):
+                data2plot_per_plot, plot_name = args
+                with timeit("Plot {}".format(plot_name)):
+                    with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=True,
+                                            return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
+                        fig, axes = fax
+                        # ylim = tuple()
+                        for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
+                            ax = get_sub_ax(axes, i)
+                            ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
+                            plot_function(fig=fig, ax=ax,
+                                          **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
+                                          **extra_arguments)
+                            # ylim = ylim + ax.get_ylim()
+                            # ylim = (min(ylim), max(ylim))
+                        # for i, _ in enumerate(data2plot_per_plot):
+                        #     ax = get_sub_ax(axes, i)
+                        #     # ax.set_ylim(ylim)
+                        #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
+                        #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
+                        plt.tight_layout()
+                        return plot_name
 
-        plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
-        tracker.stop()
+            plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
         return plot_paths
 
     return decorated_func

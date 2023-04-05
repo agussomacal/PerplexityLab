@@ -3,6 +3,7 @@ import inspect
 import itertools
 import os
 from collections import defaultdict, OrderedDict
+from contextlib import contextmanager
 from logging import warning
 from pathlib import Path
 from typing import Union, List, Dict, Set, Tuple, Callable, Generator
@@ -11,7 +12,7 @@ from typing import Union, List, Dict, Set, Tuple, Callable, Generator
 import joblib
 import pandas as pd
 from benedict import benedict
-from eco2ai import set_params
+from eco2ai import set_params, Tracker
 
 from src.performance_utils import timeit
 
@@ -62,7 +63,7 @@ def common_ancestors(names, data: Dict[str, Union[DatasetParam, DatasetFBlock, D
 
 
 class DataManager:
-    def __init__(self, path: Union[str, Path], name: str, format=JOBLIB):
+    def __init__(self, path: Union[str, Path], name: str, format=JOBLIB, country_alpha_code=None, trackCO2=False):
         self.name = name
         self.path = Path(path).joinpath(name)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -80,6 +81,9 @@ class DataManager:
         self.not_save_vars = set()
 
         self.database = benedict()
+
+        self.country_alpha_code = country_alpha_code
+        self.trackCO2 = trackCO2
 
     @property
     def columns(self):
@@ -225,23 +229,36 @@ class DataManager:
     def emissions_path(self):
         return f"{self.path.parent}/{self.name}_emissions.csv"
 
-    def set_emissions_tracker_params(self, function_block):
-        set_params(project_name=self.name,
-                   experiment_description=function_block,
-                   file_name=self.emissions_path)
+    @contextmanager
+    def track_emissions(self, description):
+        if self.trackCO2:
+            tracker = Tracker(project_name=self.name,
+                              experiment_description=description,
+                              file_name=self.emissions_path,
+                              alpha_2_code=self.country_alpha_code,
+                              ignore_warnings=True)
+            tracker.start()
+        yield
+        if self.trackCO2:
+            tracker.start()
 
     def get_emissions_summary(self, group_by_experiment=False, group_by_layer=False):
-        df = pd.read_csv(self.emissions_path)
-        df = df[
-            ["project_name", "experiment_description", "duration(s)", "power_consumption(kWh)", "CO2_emissions(kg)"]]
-        df.rename(columns={"experiment_description": "computation_layer", "project_name": "experiment"}, inplace=True)
-        df.drop(columns=(["experiment"] if not group_by_experiment else []) + (
-            ["computation_layer"] if not group_by_layer else []), inplace=True)
-        if group_by_layer or group_by_experiment:
-            return df.groupby(
-                (["experiment"] if group_by_experiment else []) + (
-                    ["computation_layer"] if group_by_layer else [])).sum()
-        return df.sum()
+        if os.path.exists(self.emissions_path):
+            df = pd.read_csv(self.emissions_path)
+            df = df[
+                ["project_name", "experiment_description", "duration(s)", "power_consumption(kWh)",
+                 "CO2_emissions(kg)"]]
+            df.rename(columns={"experiment_description": "computation_layer", "project_name": "experiment"},
+                      inplace=True)
+            df.drop(columns=(["experiment"] if not group_by_experiment else []) + (
+                ["computation_layer"] if not group_by_layer else []), inplace=True)
+            if group_by_layer or group_by_experiment:
+                return df.groupby(
+                    (["experiment"] if group_by_experiment else []) + (
+                        ["computation_layer"] if group_by_layer else [])).sum()
+            return df.sum()
+        else:
+            raise Exception("Emission file not found.")
 
     @property
     def CO2kg(self):
