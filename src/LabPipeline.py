@@ -2,6 +2,7 @@ import inspect
 from collections import namedtuple, OrderedDict
 from typing import Callable, Union
 
+from eco2ai import Tracker, track, set_params
 from tqdm import tqdm
 
 from src.DataManager import DataManager, experiment_param_generator, common_ancestors
@@ -41,6 +42,8 @@ class LabPipeline:
             datamanager.load()
 
         for function_block, save, functions in self.experimental_graph:
+            datamanager.set_emissions_tracker_params(function_block)
+
             # Generator to avoid storing in memory the unfolded data which could contain big duplicated variables.
             def input_generator():
                 for function_name, function in functions:
@@ -82,6 +85,7 @@ class LabPipeline:
                                                       function_name=function_name,
                                                       function=function)
 
+            @track
             def parallel_func(vars: InputToParallel):
                 result = vars.function(**vars.input_vars)
                 return vars.input_params, vars.input_funcs, vars.function_name, result

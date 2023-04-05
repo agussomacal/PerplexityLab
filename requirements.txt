@@ -8,3 +8,4 @@ matplotlib==3.5.0  # because in pycharm does not work by default
 seaborn
 tqdm
 makefun
+eco2ai

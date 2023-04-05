@@ -108,5 +108,16 @@ class TestDataManager(unittest.TestCase):
         d = apply(self.dm[ALL], names=["a"], sqa=lambda a: a ** 2)
         assert np.all(np.array(d["a"]) ** 2 == np.array(d["sqa"]))
 
+    def test_emissions(self):
+        dfsum = self.dm.get_emissions_summary(group_by_experiment=False, group_by_layer=False)
+        assert dfsum.shape == (3,)
+        dfsum = self.dm.get_emissions_summary(group_by_experiment=True, group_by_layer=False)
+        assert dfsum.shape == (1, 3)
+        dfsum = self.dm.get_emissions_summary(group_by_experiment=True, group_by_layer=True)
+        assert dfsum.shape[1] == 3
+        assert self.dm.CO2kg > 1e-10
+        assert self.dm.electricity_consumption_kWh > 1e-10
+        assert self.dm.computation_time_s > 1e-10
+
     if __name__ == '__main__':
         unittest.main()

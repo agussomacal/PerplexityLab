@@ -9,6 +9,7 @@ import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from eco2ai import Tracker
 from makefun import with_signature
 
 from src.DataManager import DataManager, group, apply, dmfilter
@@ -58,6 +59,10 @@ def perplex_plot(plot_function):
     def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=[], axes_by=[],
                        axes_xy_proportions=(10, 8),
                        dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
+        data_manager.set_emissions_tracker_params("figures")
+        tracker = Tracker()
+        tracker.start()
+
         path = data_manager.path.joinpath(folder) if path is None else Path(path)
         Path(path).mkdir(parents=True, exist_ok=True)
         plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
@@ -119,7 +124,9 @@ def perplex_plot(plot_function):
                     plt.tight_layout()
                     return plot_name
 
-        return [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
+        plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
+        tracker.stop()
+        return plot_paths
 
     return decorated_func
 

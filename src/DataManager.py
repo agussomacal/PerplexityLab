@@ -9,7 +9,9 @@ from typing import Union, List, Dict, Set, Tuple, Callable, Generator
 
 # import h5py
 import joblib
+import pandas as pd
 from benedict import benedict
+from eco2ai import set_params
 
 from src.performance_utils import timeit
 
@@ -218,6 +220,40 @@ class DataManager:
                     raise Exception(f"Data format {self.format} not implemented.")
             else:
                 warning(f"Data file in {self.path_to_data} not found.")
+
+    @property
+    def emissions_path(self):
+        return f"{self.path.parent}/{self.name}_emissions.csv"
+
+    def set_emissions_tracker_params(self, function_block):
+        set_params(project_name=self.name,
+                   experiment_description=function_block,
+                   file_name=self.emissions_path)
+
+    def get_emissions_summary(self, group_by_experiment=False, group_by_layer=False):
+        df = pd.read_csv(self.emissions_path)
+        df = df[
+            ["project_name", "experiment_description", "duration(s)", "power_consumption(kWh)", "CO2_emissions(kg)"]]
+        df.rename(columns={"experiment_description": "computation_layer", "project_name": "experiment"}, inplace=True)
+        df.drop(columns=(["experiment"] if not group_by_experiment else []) + (
+            ["computation_layer"] if not group_by_layer else []), inplace=True)
+        if group_by_layer or group_by_experiment:
+            return df.groupby(
+                (["experiment"] if group_by_experiment else []) + (
+                    ["computation_layer"] if group_by_layer else [])).sum()
+        return df.sum()
+
+    @property
+    def CO2kg(self):
+        return self.get_emissions_summary()["CO2_emissions(kg)"]
+
+    @property
+    def electricity_consumption_kWh(self):
+        return self.get_emissions_summary()["power_consumption(kWh)"]
+
+    @property
+    def computation_time_s(self):
+        return self.get_emissions_summary()["duration(s)"]
 
 
 # =========== =========== =========== #
