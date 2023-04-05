@@ -101,7 +101,7 @@ def perplex_plot(plot_function):
 
             def parallel_func(args):
                 data2plot_per_plot, plot_name = args
-                with timeit("Plot {}".format(plot_name)):
+                with timeit("Plot {}\n".format(plot_name)):
                     with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=True,
                                             return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
                         fig, axes = fax

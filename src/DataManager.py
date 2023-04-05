@@ -227,7 +227,7 @@ class DataManager:
 
     @property
     def emissions_path(self):
-        return f"{self.path.parent}/{self.name}_emissions.csv"
+        return f"{self.path.parent}/emissions.csv"
 
     @contextmanager
     def track_emissions(self, description):
