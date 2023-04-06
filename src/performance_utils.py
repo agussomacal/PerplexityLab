@@ -1,5 +1,4 @@
 import inspect
-import logging
 import os
 import pickle
 import time
@@ -21,7 +20,7 @@ def timeit(msg):
     print(msg, end='')
     t0 = time.time()
     yield
-    logging.info('\r -> duracion {}: {:.2f}s'.format(msg, time.time() - t0))
+    print('\r -> duracion {}: {:.2f}s'.format(msg, time.time() - t0))
 
 
 def calculate_time(func: Callable):
@@ -30,7 +29,7 @@ def calculate_time(func: Callable):
         t0 = time.time()
         res = func(*args, **kwargs)
         t = time.time() - t0
-        logging.info(f"time spent: {t}")
+        print(f"time spent: {t}")
         return t, res
 
     return new_func
@@ -87,15 +86,16 @@ class NamedPartial:
 def if_exist_load_else_do(file_format="joblib", loader=None, saver=None):
     def decorator(do_func):
         def decorated_func(path, filename=None, recalculate=False, *args, **kwargs):
-            Path(path).mkdir(parents=True, exist_ok=True)
+            filepath = Path(path)
+            filepath.mkdir(parents=True, exist_ok=True)
             filename = do_func.__name__ if filename is None else filename
             # if args4name == "all":
             #     args4name = sorted(kwargs.keys())
             # filename = f"{filename}" + "_".join(f"{arg_name}{kwargs[arg_name]}" for arg_name in args4name)
             filename = clean_str4saving(filename)
-            filepath = f"{path}/{filename}.{file_format}"
+            filepath = f"{filepath}/{filename}.{file_format}"
             if recalculate or not os.path.exists(filepath):
-                with timeit(f"Processing {filename}:"):
+                with timeit(f"Processing {filepath}:"):
                     # Projet points into graph edges
                     data = do_func(*args, **kwargs)
 
@@ -107,11 +107,11 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None):
                         with open(filepath, "r") as f:
                             pickle.dump(data, f)
                     elif "joblib" in file_format:
-                        joblib.dump(data, filename)
+                        joblib.dump(data, filepath)
                     else:
                         raise Exception(f"Format {file_format} not implemented.")
             else:
-                with timeit(f"Loading pre-processed {filename}:"):
+                with timeit(f"Loading pre-processed {filepath}:"):
 
                     if loader is not None:
                         data = loader(filepath)
@@ -121,7 +121,7 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None):
                         with open(filepath, "r") as f:
                             data = pickle.load(f)
                     elif "joblib" == file_format:
-                        data = joblib.load(filename)
+                        data = joblib.load(filepath)
                     else:
                         raise Exception(f"Format {file_format} not implemented.")
             return data

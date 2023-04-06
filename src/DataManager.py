@@ -4,7 +4,6 @@ import itertools
 import os
 from collections import defaultdict, OrderedDict
 from contextlib import contextmanager
-from logging import warning
 from pathlib import Path
 from typing import Union, List, Dict, Set, Tuple, Callable, Generator
 
@@ -222,7 +221,7 @@ class DataManager:
                 else:
                     raise Exception(f"Data format {self.format} not implemented.")
             else:
-                warning(f"Data file in {self.path_to_data} not found.")
+                print(f"Data file in {self.path_to_data} not found.")
 
     @property
     def emissions_path(self):

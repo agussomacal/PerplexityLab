@@ -2,7 +2,6 @@ import inspect
 from collections import namedtuple, OrderedDict
 from typing import Callable, Union
 
-from eco2ai import Tracker, track, set_params
 from tqdm import tqdm
 
 from src.DataManager import DataManager, experiment_param_generator, common_ancestors
