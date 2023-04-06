@@ -12,7 +12,6 @@ from typing import Union, List, Dict, Set, Tuple, Callable, Generator
 import joblib
 import pandas as pd
 from benedict import benedict
-from eco2ai import set_params, Tracker
 
 from src.performance_utils import timeit
 
@@ -232,6 +231,7 @@ class DataManager:
     @contextmanager
     def track_emissions(self, description):
         if self.trackCO2:
+            from eco2ai import Tracker
             tracker = Tracker(project_name=self.name,
                               experiment_description=description,
                               file_name=self.emissions_path,
@@ -240,7 +240,7 @@ class DataManager:
             tracker.start()
         yield
         if self.trackCO2:
-            tracker.start()
+            tracker.stop()
 
     def get_emissions_summary(self, group_by_experiment=False, group_by_layer=False):
         if os.path.exists(self.emissions_path):
@@ -258,7 +258,8 @@ class DataManager:
                         ["computation_layer"] if group_by_layer else [])).sum()
             return df.sum()
         else:
-            raise Exception("Emission file not found.")
+            print("Emission file not found.")
+            return pd.DataFrame(0, columns=["duration(s)", "power_consumption(kWh)", "CO2_emissions(kg)"])
 
     @property
     def CO2kg(self):

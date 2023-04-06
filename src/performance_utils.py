@@ -13,6 +13,8 @@ import joblib
 import numpy as np
 from pathos.multiprocessing import Pool, cpu_count
 
+from src.file_utils import clean_str4saving
+
 
 @contextmanager
 def timeit(msg):
@@ -82,36 +84,48 @@ class NamedPartial:
         return self.__name__
 
 
-def if_exist_load_else_do(do_func):
-    def decorated_func(path, filename=None, file_format="joblib", recalculate=False, *args, **kwargs):
-        Path(path).mkdir(parents=True)
-        filename = do_func.__name__ if filename is None else filename
-        filepath = f"{path}/{filename}.{file_format}"
-        if recalculate or not os.path.exists(filepath):
-            with timeit(f"Processing {filename}:"):
-                # Projet points into graph edges
-                data = do_func(*args, **kwargs)
+def if_exist_load_else_do(file_format="joblib", loader=None, saver=None):
+    def decorator(do_func):
+        def decorated_func(path, filename=None, recalculate=False, *args, **kwargs):
+            Path(path).mkdir(parents=True, exist_ok=True)
+            filename = do_func.__name__ if filename is None else filename
+            # if args4name == "all":
+            #     args4name = sorted(kwargs.keys())
+            # filename = f"{filename}" + "_".join(f"{arg_name}{kwargs[arg_name]}" for arg_name in args4name)
+            filename = clean_str4saving(filename)
+            filepath = f"{path}/{filename}.{file_format}"
+            if recalculate or not os.path.exists(filepath):
+                with timeit(f"Processing {filename}:"):
+                    # Projet points into graph edges
+                    data = do_func(*args, **kwargs)
 
-                if "npy" in file_format:
-                    np.save(filepath, data)
-                elif "pickle" in file_format:
-                    with open(filepath, "r") as f:
-                        pickle.dump(data, f)
-                elif "joblib" in file_format:
-                    data = joblib.dump(data, filename)
-                else:
-                    raise Exception(f"Format {file_format} not implemented.")
-        else:
-            with timeit(f"Loading pre-processed {filename}:"):
-                if "npy" in file_format:
-                    data = np.load(filepath)
-                elif "pickle" in file_format:
-                    with open(filepath, "r") as f:
-                        data = pickle.load(f)
-                elif "joblib" in file_format:
-                    data = joblib.load(filename)
-                else:
-                    raise Exception(f"Format {file_format} not implemented.")
-        return data
+                    if saver is not None:
+                        saver(data, filepath)
+                    elif "npy" in file_format:
+                        np.save(filepath, data)
+                    elif "pickle" in file_format:
+                        with open(filepath, "r") as f:
+                            pickle.dump(data, f)
+                    elif "joblib" in file_format:
+                        joblib.dump(data, filename)
+                    else:
+                        raise Exception(f"Format {file_format} not implemented.")
+            else:
+                with timeit(f"Loading pre-processed {filename}:"):
 
-    return decorated_func
+                    if loader is not None:
+                        data = loader(filepath)
+                    elif "npy" == file_format:
+                        data = np.load(filepath)
+                    elif "pickle" == file_format:
+                        with open(filepath, "r") as f:
+                            data = pickle.load(f)
+                    elif "joblib" == file_format:
+                        data = joblib.load(filename)
+                    else:
+                        raise Exception(f"Format {file_format} not implemented.")
+            return data
+
+        return decorated_func
+
+    return decorator
