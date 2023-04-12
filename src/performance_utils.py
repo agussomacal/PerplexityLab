@@ -6,7 +6,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partial
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Dict
 
 import joblib
 import numpy as np
@@ -58,12 +58,12 @@ def get_appropiate_number_of_workers(workers, n):
     return int(np.max((1, np.min((cpu_count() - 1, n, workers)))))
 
 
-def filter_dict(keys, **kwargs):
-    return OrderedDict([(k, v) for k, v in kwargs.items() if k in keys])
+def filter_dict(keys, kwargs: Dict):
+    return OrderedDict([(k, kwargs[k]) for k in keys if k in kwargs])
 
 
 def partial_filter(function, **kwargs):
-    return function(**filter_dict(inspect.getfullargspec(function).args, **kwargs))
+    return function(**filter_dict(inspect.getfullargspec(function).args, kwargs))
 
 
 def if_true_str(var, var_name, prefix="", end=""):
@@ -83,7 +83,15 @@ class NamedPartial:
         return self.__name__
 
 
-def if_exist_load_else_do(file_format="joblib", loader=None, saver=None):
+def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, description=None):
+    """
+
+    :param file_format:
+    :param loader:
+    :param saver:
+    :param description: description of data as a function depending on the type of data.
+    :return:
+    """
     def decorator(do_func):
         def decorated_func(path, filename=None, recalculate=False, *args, **kwargs):
             filepath = Path(path)
@@ -124,6 +132,8 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None):
                         data = joblib.load(filepath)
                     else:
                         raise Exception(f"Format {file_format} not implemented.")
+            if isinstance(description, Callable):
+                description(data)
             return data
 
         return decorated_func

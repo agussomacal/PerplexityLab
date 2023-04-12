@@ -237,9 +237,10 @@ class DataManager:
                               alpha_2_code=self.country_alpha_code,
                               ignore_warnings=True)
             tracker.start()
-        yield
-        if self.trackCO2:
+            yield
             tracker.stop()
+        else:
+            yield
 
     def get_emissions_summary(self, group_by_experiment=False, group_by_layer=False):
         if os.path.exists(self.emissions_path):
