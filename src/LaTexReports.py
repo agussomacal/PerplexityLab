@@ -1,8 +1,6 @@
 import os
-import shutil
 import subprocess
 from datetime import date
-from typing import List
 
 from src.file_utils import check_create_path, clean_str4saving
 

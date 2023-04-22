@@ -9,7 +9,6 @@ import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from eco2ai import Tracker
 from makefun import with_signature
 
 from src.DataManager import DataManager, group, apply, dmfilter
