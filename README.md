@@ -52,8 +52,8 @@ Optionally you can add a storing format (default is joblib), and set __trackCO2_
 emissions and energy consumption each time our experiments are executed.
 ``` python
 dm = DataManager(
-    path=os.path.abspath(os.path.join(__file__, os.pardir)),
-    name="TestDataManager",
+    path="~/Somewhere/Maybe/Here",
+    name="MyLaboratory", #All the data and results will be in "~/Somewhere/Maybe/Here/MyLaboratory/"
     format=JOBLIB,
     trackCO2=True
 )
