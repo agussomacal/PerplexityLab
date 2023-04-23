@@ -109,8 +109,14 @@ class TestDataManager(unittest.TestCase):
         assert np.all(np.array(d["a"]) ** 2 == np.array(d["sqa"]))
 
     def test_emissions(self):
+        os.remove(self.dm.emissions_path)
         dfsum = self.dm.get_emissions_summary(group_by_experiment=False, group_by_layer=False)
-        assert dfsum.shape == (3,)
+        assert dfsum.shape == (0, 3)
+
+        self.dm.trackCO2 = True
+        with self.dm.track_emissions("test_emissions"):
+            print("testing test emissions")
+
         dfsum = self.dm.get_emissions_summary(group_by_experiment=True, group_by_layer=False)
         assert dfsum.shape == (1, 3)
         dfsum = self.dm.get_emissions_summary(group_by_experiment=True, group_by_layer=True)

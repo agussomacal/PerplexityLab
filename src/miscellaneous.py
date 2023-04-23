@@ -12,9 +12,8 @@ import joblib
 import numpy as np
 from pathos.multiprocessing import Pool, cpu_count
 
-from src.file_utils import clean_str4saving
 
-
+# ----------- time -----------
 @contextmanager
 def timeit(msg):
     print(msg, end='')
@@ -35,6 +34,8 @@ def calculate_time(func: Callable):
     return new_func
 
 
+# ---------- Parallel or not parallel ----------
+
 def get_workers(workers):
     if workers > 0:
         return min((cpu_count() - 1, workers))
@@ -42,10 +43,15 @@ def get_workers(workers):
         return max((1, cpu_count() + workers))
 
 
+def get_appropiate_number_of_workers(workers, n):
+    return int(np.max((1, np.min((cpu_count() - 1, n, workers)))))
+
+
 def get_map_function(workers=1):
     return map if workers == 1 else Pool(get_workers(workers)).imap_unordered
 
 
+# ----------- Strings and Booleans -----------
 def is_string_int(s):
     try:
         int(s)
@@ -54,9 +60,11 @@ def is_string_int(s):
         return False
 
 
-def get_appropiate_number_of_workers(workers, n):
-    return int(np.max((1, np.min((cpu_count() - 1, n, workers)))))
+def if_true_str(var, var_name, prefix="", end=""):
+    return (prefix + var_name + end) if var else ""
 
+
+# ---------- Dictionaries and partial evaluation of functions ---------
 
 def filter_dict(keys, **kwargs):
     return OrderedDict([(k, v) for k, v in kwargs.items() if k in keys])
@@ -64,10 +72,6 @@ def filter_dict(keys, **kwargs):
 
 def partial_filter(function, **kwargs):
     return function(**filter_dict(inspect.getfullargspec(function).args, **kwargs))
-
-
-def if_true_str(var, var_name, prefix="", end=""):
-    return (prefix + var_name + end) if var else ""
 
 
 class NamedPartial:
@@ -83,7 +87,30 @@ class NamedPartial:
         return self.__name__
 
 
+# ---------- File utils ---------- #
+
+def check_create_path(path, *args):
+    path = Path(path)
+    for name in args:
+        path = path.joinpath(name)
+    Path(path).mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def clean_str4saving(s):
+    return s.replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace(",", "").replace(
+        ".", "").replace(";", "").replace(":", "").replace(" ", "_")
+
+
 def if_exist_load_else_do(file_format="joblib", loader=None, saver=None):
+    """
+    Decorator to manage loading and saving of files after a first processing execution.
+    :param file_format: format for the termination of the file. If not known specify loader an saver
+    :param loader: function that knows how to load the file
+    :param saver: function that knows how to save the file
+    :return:
+    """
+
     def decorator(do_func):
         def decorated_func(path, filename=None, recalculate=False, *args, **kwargs):
             filepath = Path(path)

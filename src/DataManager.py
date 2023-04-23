@@ -12,7 +12,7 @@ import joblib
 import pandas as pd
 from benedict import benedict
 
-from src.performance_utils import timeit
+from src.miscellaneous import timeit
 
 ALL = "AllParamsBlockVars"
 
@@ -258,7 +258,7 @@ class DataManager:
             return df.sum()
         else:
             print("Emission file not found.")
-            return pd.DataFrame(0, columns=["duration(s)", "power_consumption(kWh)", "CO2_emissions(kg)"])
+            return pd.DataFrame(columns=["duration(s)", "power_consumption(kWh)", "CO2_emissions(kg)"])
 
     @property
     def CO2kg(self):

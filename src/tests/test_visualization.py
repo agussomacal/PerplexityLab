@@ -6,7 +6,7 @@ import seaborn as sns
 
 from src.DataManager import DataManager, JOBLIB
 from src.LabPipeline import LabPipeline, FunctionBlock
-from src.viz_utils import generic_plot, make_data_frames
+from src.visualization import generic_plot, make_data_frames
 
 
 class TestVizUtils(unittest.TestCase):

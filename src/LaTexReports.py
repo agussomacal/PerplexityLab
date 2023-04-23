@@ -2,7 +2,7 @@ import os
 import subprocess
 from datetime import date
 
-from src.file_utils import check_create_path, clean_str4saving
+from src.miscellaneous import check_create_path, clean_str4saving
 
 SECTION_FOLDER_NAME = 'sections'
 PLOTS_FOLDER_NAME = 'plots'

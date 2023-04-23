@@ -12,8 +12,7 @@ import seaborn as sns
 from makefun import with_signature
 
 from src.DataManager import DataManager, group, apply, dmfilter
-from src.file_utils import clean_str4saving
-from src.performance_utils import timeit, get_map_function
+from src.miscellaneous import timeit, get_map_function, clean_str4saving
 
 INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
@@ -56,7 +55,7 @@ def make_data_frames(data_manager: DataManager, var_names=[], group_by=[], **kwa
 
 def perplex_plot(plot_function):
     def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=[], axes_by=[],
-                       axes_xy_proportions=(10, 8),
+                       axes_xy_proportions=(10, 8), savefig=True,
                        dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
 
         with data_manager.track_emissions("figures"):
@@ -101,7 +100,7 @@ def perplex_plot(plot_function):
             def parallel_func(args):
                 data2plot_per_plot, plot_name = args
                 with timeit("Plot {}\n".format(plot_name)):
-                    with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=True,
+                    with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=savefig,
                                             return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
                         fig, axes = fax
                         # ylim = tuple()
