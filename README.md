@@ -15,6 +15,7 @@ can some pip install magic path <br />
 give my code what it needs to have?*
 * __Reproducible research__: everyone everywhere should be able to run my code and get the same results. And the main script should be kind of easy to read.
 * __File management__: I don't want to waste my time in deciding where to store and get the data and the results.
+* __Explore multiple conditions__: I want to execute my experiments/simulations under different conditions specified by my relevant parameters.
 * __Parallel__: I want to run several experiments/simulations in parallel without having to rewrite code to do it specifically each time.
 * __Remember__: what has been done without worrying about the format nor the place. So I can come later in a year and do old or new analysis and don't straggle with forgotten files and paths. 
 * __Avoid re-doing__: automatically check if some experiment was done and load instead of re-doing.
@@ -52,8 +53,8 @@ Optionally you can add a storing format (default is joblib), and set __trackCO2_
 emissions and energy consumption each time our experiments are executed.
 ``` python
 dm = DataManager(
-    path=os.path.abspath(os.path.join(__file__, os.pardir)),
-    name="TestDataManager",
+    path="~/Somewhere/Maybe/Here",
+    name="MyLaboratory", #All the data and results will be in "~/Somewhere/Maybe/Here/MyLaboratory/"
     format=JOBLIB,
     trackCO2=True
 )
@@ -71,6 +72,7 @@ Ready? Run your experiment! You just need to specify
 - the number of cores to run in parallel
 - if we wish to re-do the experiments even if they have been already computed.
 - maybe we wish to start anew and forget everything.
+
 Finally, specify a list of values each input variable can take. The experiment functions defined above will be executed for each combination of the input variables (cartesian product)
 ``` python
 dm = lab.execute(
