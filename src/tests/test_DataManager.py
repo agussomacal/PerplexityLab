@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from benedict import benedict
 
-from src.DataManager import DataManager, JOBLIB, ALL, group, apply
+from PerplexityLab.DataManager import DataManager, JOBLIB, ALL, group, apply
 
 
 class TestDataManager(unittest.TestCase):

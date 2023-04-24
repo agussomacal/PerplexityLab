@@ -4,9 +4,9 @@ import unittest
 import numpy as np
 import seaborn as sns
 
-from src.DataManager import DataManager, JOBLIB
-from src.LabPipeline import LabPipeline, FunctionBlock
-from src.visualization import generic_plot, make_data_frames
+from PerplexityLab.DataManager import DataManager, JOBLIB
+from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
+from PerplexityLab.visualization import generic_plot, make_data_frames
 
 
 class TestVizUtils(unittest.TestCase):

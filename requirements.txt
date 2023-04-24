@@ -1,6 +1,4 @@
-python-benedict
 joblib
-pytest
 pathos
 numpy
 pandas

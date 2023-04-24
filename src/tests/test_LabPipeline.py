@@ -3,8 +3,8 @@ import unittest
 
 import numpy as np
 
-from src.DataManager import DataManager, JOBLIB
-from src.LabPipeline import LabPipeline, FunctionBlock
+from PerplexityLab.DataManager import DataManager, JOBLIB
+from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 
 
 class TestDataManager(unittest.TestCase):
