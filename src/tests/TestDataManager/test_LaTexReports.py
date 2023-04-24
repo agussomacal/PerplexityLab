@@ -4,10 +4,10 @@ import unittest
 import numpy as np
 import seaborn as sns
 
-from src.DataManager import DataManager, JOBLIB
-from src.LaTexReports import Code2LatexConnector
-from src.LabPipeline import LabPipeline, FunctionBlock
-from src.visualization import generic_plot
+from PerplexityLab.DataManager import DataManager, JOBLIB
+from PerplexityLab.LaTexReports import Code2LatexConnector
+from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
+from PerplexityLab.visualization import generic_plot
 
 
 class TestLaTexReports(unittest.TestCase):

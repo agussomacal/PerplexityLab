@@ -4,8 +4,8 @@ from typing import Callable, Union
 
 from tqdm import tqdm
 
-from src.DataManager import DataManager, experiment_param_generator, common_ancestors
-from src.miscellaneous import get_map_function
+from PerplexityLab.DataManager import DataManager, experiment_param_generator, common_ancestors
+from PerplexityLab.miscellaneous import get_map_function
 
 FunctionBlock = namedtuple("LayerFunction", "name function")
 InputToParallel = namedtuple("InputToParallel", "input_params input_funcs input_vars function function_name")

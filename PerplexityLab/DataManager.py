@@ -12,7 +12,7 @@ import joblib
 import pandas as pd
 from benedict import benedict
 
-from src.miscellaneous import timeit
+from PerplexityLab.miscellaneous import timeit
 
 ALL = "AllParamsBlockVars"
 

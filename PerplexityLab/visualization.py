@@ -11,8 +11,8 @@ import pandas as pd
 import seaborn as sns
 from makefun import with_signature
 
-from src.DataManager import DataManager, group, apply, dmfilter
-from src.miscellaneous import timeit, get_map_function, clean_str4saving
+from PerplexityLab.DataManager import DataManager, group, apply, dmfilter
+from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving
 
 INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
