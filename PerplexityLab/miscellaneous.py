@@ -6,7 +6,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partial
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Dict
 
 import joblib
 import numpy as np
@@ -64,12 +64,15 @@ def if_true_str(var, var_name, prefix="", end=""):
 
 
 # ---------- Dictionaries and partial evaluation of functions ---------
-def filter_dict(keys, **kwargs):
-    return OrderedDict([(k, v) for k, v in kwargs.items() if k in keys])
+def filter_dict(keys, kwargs: Dict):
+    """
+    filter_dict receives a dict (so it can accept non string keys)
+    """
+    return OrderedDict([(k, kwargs[k]) for k in keys if k in kwargs])
 
 
 def partial_filter(function, **kwargs):
-    return function(**filter_dict(inspect.getfullargspec(function).args, **kwargs))
+    return function(**filter_dict(inspect.getfullargspec(function).args, kwargs))
 
 
 class NamedPartial:

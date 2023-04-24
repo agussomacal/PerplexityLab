@@ -1,3 +1,4 @@
+python-benedict
 joblib
 pathos
 numpy
