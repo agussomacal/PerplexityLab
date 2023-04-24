@@ -27,6 +27,11 @@ give my code what it needs to have?*
 — Dear friend, what you need is __PerplexityLab__!
 Pipelines Experiments Reproducible Parallel Latex Environmentally conscIous jupYter widgets... Or something around that lines. Anyway, it does that and more! Give it a try!
 
+## Installation
+
+``` bash
+pip install -i https://test.pypi.org/simple/ PerplexityLab==0.0.1b0
+```
 
 ## How does it work?
 
@@ -60,7 +65,7 @@ dm = DataManager(
 )
 ```
 
-Create a LabPipeline instance and add your experiment layers specifying a name for the layer. Multiple functions can be associated with the same layer:
+Create a __*LabPipeline*__ instance and add your experiment layers specifying a name for the layer. Multiple functions can be associated with the same layer:
 ``` python
 lab = LabPipeline()
 lab.define_new_block_of_functions("preprocessing", experiment1)
@@ -73,7 +78,7 @@ Ready? Run your experiment! You just need to specify
 - if we wish to re-do the experiments even if they have been already computed.
 - maybe we wish to start anew and forget everything.
 
-Finally, specify a list of values each input variable can take. The experiment functions defined above will be executed for each combination of the input variables (cartesian product)
+Finally, specify a list of values each input variable can take. The experiment functions defined above will be executed for each combination of the input variables (cartesian product).
 ``` python
 dm = lab.execute(
     data_manager=dm, 
@@ -133,7 +138,7 @@ To see real projects using PerplexityLab:
  
 Coming soon:
 * Create jupyter with widgets using [Quarto](https://quarto.org/)
-* Make PerplexityLab installable with pip
+* Solve issue when input vars of functions in same layer differ
 * Add example with machine learning
 * Add example with physics simulations
 * Add example with experimental physics analysis

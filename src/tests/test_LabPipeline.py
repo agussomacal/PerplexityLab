@@ -57,6 +57,20 @@ class TestDataManager(unittest.TestCase):
         assert set(self.data_manager["a"] * 2) == set(self.data_manager["x"])
         assert len(self.data_manager["c"]) == len(k) * len(x)
 
+    # def test_execute_functions_with_different_inputs_in_same_layer(self):
+    #     lab = LabPipeline()
+    #     lab.define_new_block_of_functions("preprocessing",
+    #                                       FunctionBlock(name="squared", function=lambda x: {"y": x ** 2}))
+    #     lab.define_new_block_of_functions("experiment_1",
+    #         FunctionBlock(name="kplus", function=lambda k: {"b": k}),
+    #         FunctionBlock(name="sumprod", function=lambda x, y: {"a": y / x}),
+    #     )
+    #     k = np.array([1.0, 2.0])
+    #     x = np.array([1.0, 2.0])
+    #     self.data_manager = lab.execute(self.data_manager, num_cores=1, forget=True, x=x.tolist(), k=k.tolist())
+    #
+    #     assert set(self.data_manager["a"] * 2) == set(self.data_manager["x"])
+
     def test_execute_parallel(self):
         lab = LabPipeline()
         lab.define_new_block_of_functions("preprocessing",

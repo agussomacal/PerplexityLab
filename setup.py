@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='PerplexityLab',
-    version='0.0.1',
+    version='0.0.1b',
     description='Python package for Reproducible research, File management, Explore multiple conditions, Parallel, '
                 'Remember, Avoid re-doing, Analysis, Make reports, Explorable reports, Carbon and energy footprint',
     url='https://github.com/agussomacal/PerplexityLab',
