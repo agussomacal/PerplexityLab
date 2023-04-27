@@ -1,6 +1,7 @@
 import inspect
 import os
 import pickle
+import shutil
 import time
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -72,7 +73,7 @@ def filter_dict(keys, kwargs: Dict):
 
 
 def partial_filter(function, **kwargs):
-    return function(**filter_dict(inspect.getfullargspec(function).args, kwargs))
+    return partial(function, **filter_dict(inspect.getfullargspec(function).args, kwargs))
 
 
 class NamedPartial:
@@ -89,6 +90,9 @@ class NamedPartial:
 
 
 # ---------- File utils ---------- #
+def copy_main_script_version(file, results_path):
+    shutil.copyfile(os.path.realpath(file), f"{results_path}/main_script.py")
+
 
 def check_create_path(path, *args):
     path = Path(path)
