@@ -1,4 +1,4 @@
-# PerplexityLab
+# <font color="navy"> Perplexity</font><font color="green">Lab</font>
 
 — *Hi! Listen! I need your help!<br />
 Cause' I'm bored again to hell<br />
