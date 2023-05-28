@@ -238,7 +238,11 @@ class DataManager:
                               ignore_warnings=True)
             tracker.start()
             yield
-            tracker.stop()
+            try:
+                # TODO: solve the issue when the csv of emissions gets wrongly saved.
+                tracker.stop()
+            except:
+                print("Some problem with CO2 emissions tracker.")
         else:
             yield
 
