@@ -76,7 +76,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[]):
     def wraper(plot_function):
         def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=plot_by_default,
                            axes_by=axes_by_default, axes_xy_proportions=(10, 8), savefig=True,
-                           dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
+                           dpi=None, plot_again=True, format=".png", num_cores=1, legend=True, **kwargs):
 
             with data_manager.track_emissions("figures"):
                 path = data_manager.path.joinpath(folder) if path is None else Path(path)
@@ -133,6 +133,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[]):
                                 plot_function(fig=fig, ax=ax,
                                               **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
                                               **extra_arguments)
+                                if legend:
+                                    ax.legend()
                                 # ylim = ylim + ax.get_ylim()
                                 # ylim = (min(ylim), max(ylim))
                             # for i, _ in enumerate(data2plot_per_plot):
