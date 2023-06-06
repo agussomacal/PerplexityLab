@@ -2,6 +2,7 @@ import inspect
 import itertools
 import os
 from contextlib import contextmanager
+from inspect import signature
 from pathlib import Path
 from typing import Callable
 
@@ -9,10 +10,10 @@ import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from makefun import with_signature
+from makefun import with_signature, wraps
 
 from PerplexityLab.DataManager import DataManager, group, apply, dmfilter
-from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving
+from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving, filter_dict
 
 INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
@@ -53,77 +54,101 @@ def make_data_frames(data_manager: DataManager, var_names=[], group_by=[], **kwa
         yield grouping_vars, pd.DataFrame.from_dict(data2plot)
 
 
-def perplex_plot(plot_function):
-    def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=[], axes_by=[],
-                       axes_xy_proportions=(10, 8), savefig=True,
-                       dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
+def one_line_iterator(plot_function):
+    """
+    Un group the many experiments that could co,e together to plot them one by one.
+    """
+    pf_signature = signature(plot_function)
+    params2unlist = [p for p, v in pf_signature.parameters.items() if
+                     v._default == inspect._empty and p not in ["fig", "ax"]]
 
-        with data_manager.track_emissions("figures"):
-            path = data_manager.path.joinpath(folder) if path is None else Path(path)
-            Path(path).mkdir(parents=True, exist_ok=True)
-            plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
-            axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
+    @wraps(plot_function)
+    def new_func(**kwargs):
+        dm_params_in_plot = filter_dict(params2unlist, kwargs)
+        for one_line in zip(*list(dm_params_in_plot.values())):
+            kwargs.update(dict(zip(dm_params_in_plot.keys(), one_line)))
+            plot_function(**kwargs)
 
-            function_arg_names = inspect.getfullargspec(plot_function).args
-            assert len({"fig", "ax"}.intersection(
-                function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
-                                           "function but they were not found: {}".format(function_arg_names)
-            vars4plot = set(function_arg_names).intersection(data_manager.columns)
-            specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if k in data_manager.columns}
-            functions2apply = {k: v for k, v in kwargs.items() if
-                               k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
-                                   v, Callable)
-                               and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
-            functions2apply_var_needs = set(itertools.chain(*[
-                inspect.getfullargspec(v).args for k, v in kwargs.items() if
-                k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
-                    v, Callable) and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)]))
-            extra_arguments = {k: v for k, v in kwargs.items() if
-                               k in function_arg_names and k not in specified_vars.keys()
-                               and k not in functions2apply.keys()}
-            names = vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(functions2apply.keys()).union(
-                functions2apply_var_needs)
-            dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
-            dm = apply(dm, names=names, **functions2apply)  # now apply the functions
-            vars4plot.update(functions2apply.keys())
+    return new_func
 
-            def iterator():
-                for grouping_vars, data2plot in group(dm, names=vars4plot.union(plot_by, axes_by), by=plot_by,
-                                                      **specified_vars):
-                    plot_name = name + plot_function.__name__ + "_" + "_".join(
-                        ["{}{}".format(k, v) for k, v in grouping_vars.items()])
-                    plot_name = clean_str4saving(plot_name)
-                    plot_name = f"{path}/{plot_name}{format}"
-                    if plot_again or not os.path.exists(plot_name):
-                        yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
 
-            def parallel_func(args):
-                data2plot_per_plot, plot_name = args
-                with timeit("Plot {}\n".format(plot_name)):
-                    with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=savefig,
-                                            return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
-                        fig, axes = fax
-                        # ylim = tuple()
-                        for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
-                            ax = get_sub_ax(axes, i)
-                            ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
-                            plot_function(fig=fig, ax=ax,
-                                          **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
-                                          **extra_arguments)
-                            # ylim = ylim + ax.get_ylim()
-                            # ylim = (min(ylim), max(ylim))
-                        # for i, _ in enumerate(data2plot_per_plot):
-                        #     ax = get_sub_ax(axes, i)
-                        #     # ax.set_ylim(ylim)
-                        #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
-                        #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
-                        plt.tight_layout()
-                        return plot_name
+def perplex_plot(plot_by_default=[], axes_by_default=[]):
+    def wraper(plot_function):
+        def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=plot_by_default,
+                           axes_by=axes_by_default, axes_xy_proportions=(10, 8), savefig=True,
+                           dpi=None, plot_again=True, format=".png", num_cores=1, **kwargs):
 
-            plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
-        return plot_paths
+            with data_manager.track_emissions("figures"):
+                path = data_manager.path.joinpath(folder) if path is None else Path(path)
+                Path(path).mkdir(parents=True, exist_ok=True)
+                plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
+                axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
 
-    return decorated_func
+                function_arg_names = inspect.getfullargspec(plot_function).args
+                assert len({"fig", "ax"}.intersection(
+                    function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
+                                               "function but they were not found: {}".format(function_arg_names)
+                vars4plot = set(function_arg_names).intersection(data_manager.columns)
+                specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
+                                  k in data_manager.columns}
+                functions2apply = {k: v for k, v in kwargs.items() if
+                                   k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                                       v, Callable)
+                                   and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
+                functions2apply_var_needs = set(itertools.chain(*[
+                    inspect.getfullargspec(v).args for k, v in kwargs.items() if
+                    k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                        v, Callable) and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)]))
+                extra_arguments = {k: v for k, v in kwargs.items() if
+                                   k in function_arg_names and k not in specified_vars.keys()
+                                   and k not in functions2apply.keys()}
+                names = vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(
+                    functions2apply.keys()).union(
+                    functions2apply_var_needs)
+                dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
+                dm = apply(dm, names=names, **functions2apply)  # now apply the functions
+                vars4plot.update(functions2apply.keys())
+
+                def iterator():
+                    for grouping_vars, data2plot in group(dm, names=vars4plot.union(plot_by, axes_by), by=plot_by,
+                                                          **specified_vars):
+                        plot_name = name + plot_function.__name__ + "_" + "_".join(
+                            ["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                        plot_name = clean_str4saving(plot_name)
+                        plot_name = f"{path}/{plot_name}{format}"
+                        if plot_again or not os.path.exists(plot_name):
+                            yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
+
+                def parallel_func(args):
+                    data2plot_per_plot, plot_name = args
+                    with timeit("Plot {}\n".format(plot_name)):
+                        with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=savefig,
+                                                return_fig=True, axes_xy_proportions=axes_xy_proportions,
+                                                dpi=dpi) as fax:
+                            fig, axes = fax
+                            # ylim = tuple()
+                            for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
+                                ax = get_sub_ax(axes, i)
+                                ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
+                                plot_function(fig=fig, ax=ax,
+                                              **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
+                                              **extra_arguments)
+                                # ylim = ylim + ax.get_ylim()
+                                # ylim = (min(ylim), max(ylim))
+                            # for i, _ in enumerate(data2plot_per_plot):
+                            #     ax = get_sub_ax(axes, i)
+                            #     # ax.set_ylim(ylim)
+                            #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
+                            #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
+                            plt.tight_layout()
+                            return plot_name
+
+                plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
+            return plot_paths
+
+        return decorated_func
+
+    return wraper
 
 
 def unfold(dict_of_lists):
@@ -149,7 +174,7 @@ def unfold(dict_of_lists):
 def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, plot_func: Callable = sns.lineplot,
                  other_plot_funcs=(), log: str = "", sort_by=[], ylim=None, xlim=None, **kwargs):
     # TODO: a way to agregate data instead of splitting depending if sns or plt
-    @perplex_plot
+    @perplex_plot()
     @with_signature(
         f"plot_{plot_func.__name__}_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label}.union(sort_by).difference([None]))})")
     def function_plot(**vars4plot):

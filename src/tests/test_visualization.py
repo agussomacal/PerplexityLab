@@ -6,7 +6,7 @@ import seaborn as sns
 
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
-from PerplexityLab.visualization import generic_plot, make_data_frames
+from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot, one_line_iterator
 
 
 class TestVizUtils(unittest.TestCase):
@@ -24,6 +24,16 @@ class TestVizUtils(unittest.TestCase):
         self.data_manager = lab.execute(self.data_manager,
                                         num_cores=1, forget=True, save_on_iteration=False,
                                         x=np.linspace(-1, 1), k=[0, 1])
+
+    def test_one_line_iterator(self):
+        @perplex_plot()
+        @one_line_iterator
+        def one_plot(fig, ax, x, z):
+            ax.scatter(x, z)
+
+        paths = one_plot(self.data_manager, axes_by=["k"], z=lambda x, y: y / x)
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
 
     def test_plot_versus(self):
         paths = generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
