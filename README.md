@@ -139,7 +139,6 @@ To see real projects using PerplexityLab:
 Coming soon:
 * Create jupyter with widgets using [Quarto](https://quarto.org/)
 * Solve issue when input vars of functions in same layer differ
-* Add example with machine learning
 * Add example with physics simulations
 * Add example with experimental physics analysis
 
@@ -147,6 +146,9 @@ and eventually
 * Logo
 * Experiments whose output is a file saved in memory.
 * Database made of numerical keys mapped to list of stored variables (instead of te variables themselves being the keys and values).
-* Layers not to be saved (computed every time)
+* Layers not to be saved (computed every time).
 * Variables that are actualized after another computation should replace the old ones?
 * Lab and DataManager should be together?
+* Input Variables not stringables.
+* Default variables in experiment functions should be accepted even if we don't add them as input vars explicitly.
+

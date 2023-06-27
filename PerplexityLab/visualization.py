@@ -56,7 +56,7 @@ def make_data_frames(data_manager: DataManager, var_names=[], group_by=[], **kwa
 
 def one_line_iterator(plot_function):
     """
-    Un group the many experiments that could co,e together to plot them one by one.
+    Un group the many experiments that could come together to plot them one by one.
     """
     pf_signature = signature(plot_function)
     params2unlist = [p for p, v in pf_signature.parameters.items() if

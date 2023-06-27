@@ -35,6 +35,15 @@ class TestVizUtils(unittest.TestCase):
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
 
+        @perplex_plot()
+        @one_line_iterator
+        def one_plot(fig, ax, x, z, a=1):
+            ax.scatter(x, z + a)
+
+        paths = one_plot(self.data_manager, axes_by=["k"], z=lambda x, y: y / x)
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+
     def test_plot_versus(self):
         paths = generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
                              z=lambda x, y: y / x, axes_by=["k"])

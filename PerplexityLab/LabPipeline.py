@@ -1,7 +1,9 @@
 import inspect
 from collections import namedtuple, OrderedDict
+from logging import warning
 from typing import Callable, Union
 
+import numpy as np
 from tqdm import tqdm
 
 from PerplexityLab.DataManager import DataManager, experiment_param_generator, common_ancestors
@@ -9,6 +11,8 @@ from PerplexityLab.miscellaneous import get_map_function
 
 FunctionBlock = namedtuple("LayerFunction", "name function")
 InputToParallel = namedtuple("InputToParallel", "input_params input_funcs input_vars function function_name")
+
+ACCEPTED_DATA_TYPES = (np.ndarray, list, int, float, str, bool)
 
 
 class LabPipeline:
@@ -65,6 +69,12 @@ class LabPipeline:
                     # other variables.
                     for input_params in experiment_param_generator(
                             **OrderedDict([(k, params[k]) for k in function_param_ancestors])):
+
+                        # warn of possible bugs if the input data types are not accepted.
+                        for k, v in input_params.items():
+                            if not isinstance(v, ACCEPTED_DATA_TYPES):
+                                warning(
+                                    "{} is not between the accepted data tiypes: {} ".format(k, ACCEPTED_DATA_TYPES))
 
                         # 2) Specific params needed for the evaluation of the function: this can be another variable
                         # that was created afterwards in a previous layer. (A, B) -> (C) and f(A, C) needs A and C
