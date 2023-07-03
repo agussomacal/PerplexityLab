@@ -11,13 +11,14 @@ from PerplexityLab.miscellaneous import get_map_function
 
 FunctionBlock = namedtuple("LayerFunction", "name function")
 InputToParallel = namedtuple("InputToParallel", "input_params input_funcs input_vars function function_name")
+ExperimentalGraph = namedtuple("ExperimentalGraph", "recalculate save functions")
 
 ACCEPTED_DATA_TYPES = (np.ndarray, list, int, float, str, bool)
 
 
 class LabPipeline:
     def __init__(self):
-        self.experimental_graph = []
+        self.experimental_graph = OrderedDict()
 
     def define_new_block_of_functions(self, name, *functions: Union[FunctionBlock, Callable], **kwargs):
         """
@@ -35,16 +36,17 @@ class LabPipeline:
         assert all([isinstance(function.name, str) for function in functions]), "function name should be str."
         assert all([isinstance(function.function, Callable) for function in functions]), \
             "function name should be Callable."
-        self.experimental_graph.append((name, save, functions))
+        self.experimental_graph[name] = ExperimentalGraph(
+            recalculate=False if "recalculate" not in kwargs else kwargs["recalculate"], save=save, functions=functions)
 
-    def execute(self, datamanager: DataManager, num_cores=1, forget=False, recalculate=False, save_on_iteration=None,
+    def execute(self, datamanager: DataManager, num_cores=1, forget=False, save_on_iteration=None,
                 verbose=0, **params):
         if forget:
             datamanager.reset()
         else:
             datamanager.load()
 
-        for function_block, save, functions in self.experimental_graph:
+        for function_block, (recalculate, save, functions) in self.experimental_graph.items():
 
             # Generator to avoid storing in memory the unfolded data which could contain big duplicated variables.
             def input_generator():
@@ -83,9 +85,13 @@ class LabPipeline:
                         # needed variable is the output of each of this previous functions.
                         for input_funcs, input_vars in datamanager.experiments_iterator(input_params,
                                                                                         function_arg_names):
+                            # check if some previous dependant layer has being recalculated
+                            recalculate_this = any([self.experimental_graph[fm].recalculate for fm in input_funcs.keys()
+                                                    if fm in self.experimental_graph])
+                            recalculate_this = recalculate_this or recalculate
                             # checks if it is already done or not
-                            if recalculate or not datamanager.is_in_database(input_params, input_funcs,
-                                                                             function_block, function_name):
+                            if recalculate_this or not datamanager.is_in_database(input_params, input_funcs,
+                                                                                  function_block, function_name):
                                 # 3) The actual function to be evaluated and the corresponding name.
                                 yield InputToParallel(input_params=input_params,
                                                       input_funcs=input_funcs,

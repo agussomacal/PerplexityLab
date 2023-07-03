@@ -46,17 +46,27 @@ class TestDataManager(unittest.TestCase):
             "experiment_2",
             # FunctionBlock(name="kplus", function=lambda k: {"a": k + 1}),
             # FunctionBlock(name="ysubk", function=lambda k, y: {"a": y - k}),
-            FunctionBlock(name="sumprod", function=lambda x, y: {"a": y / x}),
+            FunctionBlock(name="sumprod", function=lambda x, y: {"a": y / x})
         )
         lab.define_new_block_of_functions(
             "experiment_3",
             FunctionBlock(name="ysubk", function=lambda k, y: {"c": y - k}),
+            recalculate=True
         )
         self.data_manager = lab.execute(self.data_manager, num_cores=1, forget=True, x=x.tolist(), k=k.tolist())
 
         assert set(self.data_manager["a"] * 2) == set(self.data_manager["x"])
         assert len(self.data_manager["c"]) == len(k) * len(x)
 
+        lab.define_new_block_of_functions(
+            "experiment_3",
+            FunctionBlock(name="ysubk", function=lambda k, y: {"c": y - k}),
+            recalculate=True
+        )
+        self.data_manager = lab.execute(self.data_manager, num_cores=1, x=x.tolist(), k=k.tolist())
+
+        assert set(self.data_manager["a"] * 2) == set(self.data_manager["x"])
+        assert len(self.data_manager["c"]) == len(k) * len(x)
     # def test_execute_functions_with_different_inputs_in_same_layer(self):
     #     lab = LabPipeline()
     #     lab.define_new_block_of_functions("preprocessing",

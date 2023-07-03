@@ -72,11 +72,12 @@ def one_line_iterator(plot_function):
     return new_func
 
 
-def perplex_plot(plot_by_default=[], axes_by_default=[]):
+def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
     def wraper(plot_function):
         def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=plot_by_default,
                            axes_by=axes_by_default, axes_xy_proportions=(10, 8), savefig=True,
-                           dpi=None, plot_again=True, format=".png", num_cores=1, legend=True, **kwargs):
+                           dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
+                           ylabel=None, **kwargs):
 
             with data_manager.track_emissions("figures"):
                 path = data_manager.path.joinpath(folder) if path is None else Path(path)
@@ -133,8 +134,12 @@ def perplex_plot(plot_by_default=[], axes_by_default=[]):
                                 plot_function(fig=fig, ax=ax,
                                               **{k: v for k, v in data2plot_in_ax.items() if k in function_arg_names},
                                               **extra_arguments)
-                                if legend:
+                                if add_legend:
                                     ax.legend()
+                                if xlabel is not None:
+                                    ax.set_xlabel(xlabel)
+                                if ylabel is not None:
+                                    ax.set_ylabel(ylabel)
                                 # ylim = ylim + ax.get_ylim()
                                 # ylim = (min(ylim), max(ylim))
                             # for i, _ in enumerate(data2plot_per_plot):
@@ -196,8 +201,13 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
 
         data = pd.DataFrame.from_dict(unfold(dict4plot))
         # data = pd.DataFrame.from_dict(unfold(dict4plot))
-        data.sort_values(by=sort_by + ([label] if label is not None else []) + [x])
+        data.sort_values(by=sort_by + ([label] if label is not None else []) + [x]).reset_index(drop=True)
         plot_func(data=data, x=x, y=y, hue=label, ax=ax)
+        ax.set(xlabel=x, ylabel=y)
+        # add proper Dim values as x labels
+        # ax.set_xticklabels(data[x])
+        # for item in ax.get_xticklabels(): item.set_rotation(90)
+
         # if "data" in inspect.getfullargspec(plot_func).args:
         #     data = pd.DataFrame.from_dict(
         #         {
