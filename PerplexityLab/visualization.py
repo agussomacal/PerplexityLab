@@ -74,7 +74,7 @@ def one_line_iterator(plot_function):
 
 def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
     def wraper(plot_function):
-        def decorated_func(data_manager: DataManager, path=None, name="", folder="", plot_by=plot_by_default,
+        def decorated_func(data_manager: DataManager, path=None, name=None, folder="", plot_by=plot_by_default,
                            axes_by=axes_by_default, axes_xy_proportions=(10, 8), savefig=True,
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
@@ -113,8 +113,11 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
                 def iterator():
                     for grouping_vars, data2plot in group(dm, names=vars4plot.union(plot_by, axes_by), by=plot_by,
                                                           **specified_vars):
-                        plot_name = name + plot_function.__name__ + "_" + "_".join(
-                            ["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                        # naming the plot
+                        extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                        plot_name = (name if name is not None else plot_function.__name__)
+                        if len(extra_info) > 1:
+                            plot_name += "_" + extra_info
                         plot_name = clean_str4saving(plot_name)
                         plot_name = f"{path}/{plot_name}{format}"
                         if plot_again or not os.path.exists(plot_name):
@@ -140,13 +143,6 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
                                     ax.set_xlabel(xlabel)
                                 if ylabel is not None:
                                     ax.set_ylabel(ylabel)
-                                # ylim = ylim + ax.get_ylim()
-                                # ylim = (min(ylim), max(ylim))
-                            # for i, _ in enumerate(data2plot_per_plot):
-                            #     ax = get_sub_ax(axes, i)
-                            #     # ax.set_ylim(ylim)
-                            #     ax.set_ylim((ylim[0] * 0.9, ylim[1] * 1.1))
-                            #     # ax.set_ylim((ylim[0] - np.diff(ylim) * 0.1, ylim[1] + np.diff(ylim) * 0.1))
                             plt.tight_layout()
                             return plot_name
 
