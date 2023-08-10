@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 from PerplexityLab.DataManager import DataManager, experiment_param_generator, common_ancestors
-from PerplexityLab.miscellaneous import get_map_function
+from PerplexityLab.miscellaneous import get_map_function, timeit
 
 FunctionBlock = namedtuple("LayerFunction", "name function")
 InputToParallel = namedtuple("InputToParallel", "input_params input_funcs input_vars function function_name")
@@ -113,11 +113,14 @@ class LabPipeline:
                         # save after each result only if certain iterations passed
                         if save_on_iteration is not None and save_on_iteration > 0 \
                                 and (i % save_on_iteration) == (-1 % save_on_iteration):
-                            datamanager.save()
+                            with timeit("Saving intermediate results."):
+                                datamanager.save()
 
                     # save after each layer
+                    print("Layer calculations finished.")
                     if save_on_iteration is None or save_on_iteration > 0:
-                        datamanager.save()
+                        with timeit("Saving results."):
+                            datamanager.save()
                 else:
                     print("\r Experiments for {} already done, skipping.".format(function_block))
 
