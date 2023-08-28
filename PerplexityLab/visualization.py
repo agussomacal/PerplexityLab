@@ -4,7 +4,7 @@ import os
 from contextlib import contextmanager
 from inspect import signature
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List, Union
 
 import matplotlib.pylab as plt
 import numpy as np
@@ -299,14 +299,13 @@ def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axe
 
 
 @contextmanager
-def save_fig(path, filename, show=False):
-    Path(path).mkdir(parents=True, exist_ok=True)
-    if filename[-4:] not in ['.png', '.jpg', '.svg']:
-        filename = f"{filename}.png"
-
+def save_fig(paths: Union[List, str, Path], filename, show=False):
     yield
-
-    plt.savefig(f"{path}/{filename}")
+    for path in paths if isinstance(paths, list) else [paths]:
+        Path(path).mkdir(parents=True, exist_ok=True)
+        if "." not in filename:
+            filename = f"{filename}.png"
+        plt.savefig(f"{path}/{filename}")
     if show:
         plt.show()
     plt.close()

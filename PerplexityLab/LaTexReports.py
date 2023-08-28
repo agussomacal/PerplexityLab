@@ -21,18 +21,25 @@ class RunsInfo2Latex:
 
     def __init__(self, path2latex):
         self.path2latex = Path(path2latex)
-        self.runs_info_filepath = Path.joinpath(self.path2latex.parent, "runsinfo.csv")
+
+    @property
+    def latex_folder(self):
+        return self.path2latex.parent
+
+    @property
+    def runs_info_filepath(self):
+        return Path.joinpath(self.latex_folder, "runsinfo.csv")
 
     def append_info(self, **kwargs):
         if os.path.exists(self.runs_info_filepath):
-            data = pd.read_csv(self.runs_info_filepath, index_col=0)
+            data = pd.read_csv(self.runs_info_filepath, index_col=0, dtype='str')
             data = pd.Series(data.values.squeeze(), index=data.index)
         else:
             data = pd.Series()
         for k, v in kwargs.items():
             data[k] = v
 
-        data.to_csv(self.runs_info_filepath, header=False)
+        data.astype('str').to_csv(self.runs_info_filepath, header=False)
 
     def insert_preamble_in_latex_file(self):
         with open(self.path2latex, "r") as f:
