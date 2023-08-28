@@ -18,13 +18,17 @@ class RunsInfo2Latex:
     added to the laTex file preamble through insert_preamble_in_latex_file. Information is extracted from file
     runsinfo.csv whose info is added in the python code via append_info.
     """
+
     def __init__(self, path2latex):
         self.path2latex = Path(path2latex)
         self.runs_info_filepath = Path.joinpath(self.path2latex.parent, "runsinfo.csv")
 
     def append_info(self, **kwargs):
-        data = pd.Series(pd.read_csv(self.runs_info_filepath, names=["thekey", "thevalue"], index_col=0)) \
-            if os.path.exists(self.runs_info_filepath) else pd.Series()
+        if os.path.exists(self.runs_info_filepath):
+            data = pd.read_csv(self.runs_info_filepath, index_col=0)
+            data = pd.Series(data.values.squeeze(), index=data.index)
+        else:
+            data = pd.Series()
         for k, v in kwargs.items():
             data[k] = v
 
