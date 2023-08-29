@@ -19,8 +19,9 @@ class RunsInfo2Latex:
     runsinfo.csv whose info is added in the python code via append_info.
     """
 
-    def __init__(self, path2latex):
+    def __init__(self, path2latex, sep=";"):
         self.path2latex = Path(path2latex)
+        self.sep = sep
 
     @property
     def latex_folder(self):
@@ -32,14 +33,15 @@ class RunsInfo2Latex:
 
     def append_info(self, **kwargs):
         if os.path.exists(self.runs_info_filepath):
-            data = pd.read_csv(self.runs_info_filepath, index_col=0, dtype='str')
-            data = pd.Series(data.values.squeeze(), index=data.index)
+            with open(self.runs_info_filepath, "r") as f:
+                data = dict([line.rstrip().split(self.sep) for line in f])
         else:
-            data = pd.Series()
+            data = dict()
         for k, v in kwargs.items():
             data[k] = v
 
-        data.astype('str').to_csv(self.runs_info_filepath, header=False)
+        with open(self.runs_info_filepath, "w") as f:
+            f.write("\n".join([f"{k}{self.sep}{v}" for k, v in data.items()]))
 
     def insert_preamble_in_latex_file(self):
         with open(self.path2latex, "r") as f:
@@ -60,7 +62,7 @@ class RunsInfo2Latex:
                 "% into the latex to keep an updated-paired version of the article.\n\n" \
                 "% package to open file containing variables\n" \
                 "\\usepackage{datatool, filecontents}\n" \
-                "\DTLsetseparator{,}% Set the separator between the columns.\n" \
+                f"\DTLsetseparator{{{self.sep}}}% Set the separator between the columns.\n" \
                 "\DTLloadrawdb[noheader, keys={thekey,thevalue}]{runsinfo}{runsinfo.csv}\n" \
                 "% % import data\n" \
                 "% % Loads mydata.dat with column headers 'thekey' and 'thevalue'\n" \

@@ -299,13 +299,13 @@ def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axe
 
 
 @contextmanager
-def save_fig(paths: Union[List, str, Path], filename, show=False):
+def save_fig(paths: Union[List, str, Path], filename, show=False, dpi=None):
     yield
     for path in paths if isinstance(paths, list) else [paths]:
         Path(path).mkdir(parents=True, exist_ok=True)
         if "." not in filename:
             filename = f"{filename}.png"
-        plt.savefig(f"{path}/{filename}")
+        plt.savefig(f"{path}/{filename}", dpi=dpi)
     if show:
         plt.show()
     plt.close()
