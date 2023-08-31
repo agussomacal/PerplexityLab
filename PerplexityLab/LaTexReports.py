@@ -22,6 +22,15 @@ class RunsInfo2Latex:
     def __init__(self, path2latex, sep=";"):
         self.path2latex = Path(path2latex)
         self.sep = sep
+        if os.path.exists(self.runs_info_filepath):
+            with open(self.runs_info_filepath, "r") as f:
+                self._data = dict([line.rstrip().split(self.sep) for line in f])
+        else:
+            self._data = dict()
+
+    @property
+    def data(self):
+        return self._data
 
     @property
     def latex_folder(self):
@@ -31,17 +40,15 @@ class RunsInfo2Latex:
     def runs_info_filepath(self):
         return Path.joinpath(self.latex_folder, "runsinfo.csv")
 
+    def __getitem__(self, item):
+        return self._data[item]
+
     def append_info(self, **kwargs):
-        if os.path.exists(self.runs_info_filepath):
-            with open(self.runs_info_filepath, "r") as f:
-                data = dict([line.rstrip().split(self.sep) for line in f])
-        else:
-            data = dict()
         for k, v in kwargs.items():
-            data[k] = v
+            self._data[k] = v
 
         with open(self.runs_info_filepath, "w") as f:
-            f.write("\n".join([f"{k}{self.sep}{v}" for k, v in data.items()]))
+            f.write("\n".join([f"{k}{self.sep}{v}" for k, v in self._data.items()]))
 
     def insert_preamble_in_latex_file(self):
         with open(self.path2latex, "r") as f:
