@@ -115,6 +115,10 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
     :param saver: function that knows how to save the file
     :param description: description of data as a function depending on the type of data.
     :return:
+    a function with the same aprameters as the decorated plus
+    :path to specify path to folder
+    :filename=None to specify filename
+    :recalculate=False to force recomputation.
     """
 
     def decorator(do_func):
