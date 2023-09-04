@@ -62,6 +62,7 @@ def one_line_iterator(plot_function):
     params2unlist = [p for p, v in pf_signature.parameters.items() if
                      v._default == inspect._empty and p not in ["fig", "ax"]]
 
+    # TODO: when a not default variable is added this crashes because it assumes it comes from datamanager.
     @wraps(plot_function)
     def new_func(**kwargs):
         dm_params_in_plot = filter_dict(params2unlist, kwargs)
