@@ -5,7 +5,7 @@ import shutil
 import time
 from collections import OrderedDict
 from contextlib import contextmanager
-from functools import partial
+from functools import partial, partialmethod
 from pathlib import Path
 from typing import Callable, Dict
 
@@ -87,6 +87,12 @@ class NamedPartial:
 
     def __str__(self):
         return self.__name__
+
+
+def ClassPartialInit(class_type, *args, **kwargs):
+    return type("Partial" + class_type.__name__, (class_type,) + class_type.__bases__, {
+        '__init__': partialmethod(class_type.__init__, *args, **kwargs)
+    })
 
 
 # ---------- File utils ---------- #
