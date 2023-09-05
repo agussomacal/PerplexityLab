@@ -89,10 +89,18 @@ class NamedPartial:
         return self.__name__
 
 
-def ClassPartialInit(class_type, *args, **kwargs):
-    return type("Partial" + class_type.__name__, (class_type,) + class_type.__bases__, {
-        '__init__': partialmethod(class_type.__init__, *args, **kwargs)
-    })
+def ClassPartialInit(class_type, class_name=None, **kwargs):
+    if class_name is None:
+        class_name = "Partial" + class_type.__name__ + "_".join([str(k) + str(v) for k, v in kwargs.items()])
+    new_class = type(
+        class_name,
+        (class_type,) + class_type.__bases__,
+        {
+            '__init__': partialmethod(class_type.__init__, **kwargs),
+            # '__reduce__': lambda self: (class_type, tuple(), self.__dict__.copy())
+        })
+    globals()[class_name] = new_class
+    return new_class
 
 
 # ---------- File utils ---------- #
