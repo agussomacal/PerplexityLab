@@ -1,3 +1,4 @@
+import copy
 import inspect
 import itertools
 import os
@@ -73,10 +74,11 @@ def one_line_iterator(plot_function):
     return new_func
 
 
-def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
+def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], legend=True):
     def wraper(plot_function):
         def decorated_func(data_manager: DataManager, path=None, name=None, folder="", plot_by=plot_by_default,
-                           axes_by=axes_by_default, axes_xy_proportions=(10, 8), savefig=True,
+                           axes_by=axes_by_default, folder_by=folder_by_default, axes_xy_proportions=(10, 8),
+                           savefig=True,
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
 
@@ -85,6 +87,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
                 Path(path).mkdir(parents=True, exist_ok=True)
                 plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
                 axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
+                folder_by = folder_by if isinstance(folder_by, list) else [folder_by]
 
                 function_arg_names = inspect.getfullargspec(plot_function).args
                 assert len({"fig", "ax"}.intersection(
@@ -94,17 +97,17 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
                 specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
                                   k in data_manager.columns}
                 functions2apply = {k: v for k, v in kwargs.items() if
-                                   k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                                   k in function_arg_names + plot_by + axes_by + folder_by and k not in specified_vars.keys() and isinstance(
                                        v, Callable)
                                    and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
                 functions2apply_var_needs = set(itertools.chain(*[
                     inspect.getfullargspec(v).args for k, v in kwargs.items() if
-                    k in function_arg_names + plot_by + axes_by and k not in specified_vars.keys() and isinstance(
+                    k in function_arg_names + plot_by + axes_by + folder_by and k not in specified_vars.keys() and isinstance(
                         v, Callable) and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)]))
                 extra_arguments = {k: v for k, v in kwargs.items() if
                                    k in function_arg_names and k not in specified_vars.keys()
                                    and k not in functions2apply.keys()}
-                names = vars4plot.union(plot_by, axes_by, specified_vars.keys()).difference(
+                names = vars4plot.union(plot_by, axes_by, folder_by, specified_vars.keys()).difference(
                     functions2apply.keys()).union(
                     functions2apply_var_needs)
                 dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
@@ -112,17 +115,29 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], legend=True):
                 vars4plot.update(functions2apply.keys())
 
                 def iterator():
-                    for grouping_vars, data2plot in group(dm, names=vars4plot.union(plot_by, axes_by), by=plot_by,
-                                                          **specified_vars):
-                        # naming the plot
-                        extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
-                        plot_name = (name if name is not None else plot_function.__name__)
-                        if len(extra_info) > 1:
-                            plot_name += "_" + extra_info
-                        plot_name = clean_str4saving(plot_name)
-                        plot_name = f"{path}/{plot_name}{format}"
-                        if plot_again or not os.path.exists(plot_name):
-                            yield list(group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
+                    for grouping_vars_folder, data2plot_folder in \
+                            group(dm, names=vars4plot.union(plot_by, axes_by, folder_by), by=folder_by,
+                                  **specified_vars):
+                        if len(folder_by) > 0:
+                            folder_name = clean_str4saving(
+                                "_".join(["{}{}".format(k, v) for k, v in grouping_vars_folder.items()]))
+                            path2plot = path.joinpath(folder_name)
+                            Path(path2plot).mkdir(parents=True, exist_ok=True)
+                        else:
+                            path2plot = copy.copy(path)
+                        for grouping_vars, data2plot in group(data2plot_folder, names=vars4plot.union(plot_by, axes_by),
+                                                              by=plot_by,
+                                                              **specified_vars):
+                            # naming the plot
+                            extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                            plot_name = (name if name is not None else plot_function.__name__)
+                            if len(extra_info) > 1:
+                                plot_name += "_" + extra_info
+                            plot_name = clean_str4saving(plot_name)
+                            plot_name = f"{path2plot}/{plot_name}{format}"
+                            if plot_again or not os.path.exists(plot_name):
+                                yield list(
+                                    group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
 
                 def parallel_func(args):
                     data2plot_per_plot, plot_name = args
