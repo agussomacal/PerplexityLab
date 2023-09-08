@@ -125,9 +125,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
                             Path(path2plot).mkdir(parents=True, exist_ok=True)
                         else:
                             path2plot = copy.copy(path)
-                        for grouping_vars, data2plot in group(data2plot_folder, names=vars4plot.union(plot_by, axes_by),
-                                                              by=plot_by,
-                                                              **specified_vars):
+                        for grouping_vars, data2plot in group(data2plot_folder, names=vars4plot.union(plot_by, axes_by, folder_by),
+                                                              by=plot_by):
                             # naming the plot
                             extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
                             plot_name = (name if name is not None else plot_function.__name__)
@@ -137,7 +136,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
                             plot_name = f"{path2plot}/{plot_name}{format}"
                             if plot_again or not os.path.exists(plot_name):
                                 yield list(
-                                    group(data2plot, names=vars4plot.union(plot_by, axes_by), by=axes_by)), plot_name
+                                    group(data2plot, names=vars4plot.union(plot_by, axes_by, folder_by), by=axes_by)), plot_name
 
                 def parallel_func(args):
                     data2plot_per_plot, plot_name = args
