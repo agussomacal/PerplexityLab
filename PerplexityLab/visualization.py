@@ -212,9 +212,9 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
 
         data = pd.DataFrame.from_dict(unfold(dict4plot))
         # data = pd.DataFrame.from_dict(unfold(dict4plot))
-        data.sort_values(by=sort_by + ([label] if label is not None else []) + [x]).reset_index(drop=True)
-        plot_func(data=data, x=x, y=y, hue=label, ax=ax)
+        data = data.sort_values(by=sort_by + ([label] if label is not None else []) + [x]).reset_index(drop=True)
         ax.set(xlabel=x, ylabel=y)
+        plot_func(data=data, x=x, y=y, hue=label, ax=ax)
         # add proper Dim values as x labels
         # ax.set_xticklabels(data[x])
         # for item in ax.get_xticklabels(): item.set_rotation(90)

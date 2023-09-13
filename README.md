@@ -27,6 +27,15 @@ give my code what it needs to have?*
 — Dear friend, what you need is __PerplexityLab__!
 Pipelines Experiments Reproducible Parallel Latex Environmentally conscIous jupYter widgets... Or something around that lines. Anyway, it does that and more! Give it a try!
 
+So just to give you a flavour, but in truth you can do much more!
+
+For a more detailed explanation:
+* [PerplexityLab for Machine Learning](https://github.com/agussomacal/PerplexityLab/blob/main/src/examples/PerplexityLab4ML.ipynb)
+
+To see real projects using PerplexityLab:
+* [Non Linear Compressive Reduced Basis Approximation for PDE’s](https://github.com/agussomacal/NonLinearRBA4PDEs)
+ 
+
 ## Installation
 
 ``` bash
@@ -128,14 +137,7 @@ my_plot(
 )
 ```
 
-This is just to give you a flavour, but in truth you can do much more!
 
-For a more detailed explanation:
-* [PerplexityLab for Machine Learning](https://github.com/agussomacal/PerplexityLab/blob/main/src/examples/PerplexityLab4ML.ipynb)
-
-To see real projects using PerplexityLab:
-* [Non Linear Compressive Reduced Basis Approximation for PDE’s](https://github.com/agussomacal/NonLinearRBA4PDEs)
- 
 Coming soon:
 * Create jupyter with widgets using [Quarto](https://quarto.org/)
 * Solve issue when input vars of functions in same layer differ
@@ -147,6 +149,8 @@ and eventually
 * Experiments whose output is a file saved in memory.
 * Database made of numerical keys mapped to list of stored variables (instead of te variables themselves being the keys and values).
 * Layers not to be saved (computed every time).
+* Each Layer saved in different files.
+* Forget selected experiments.
 * Variables that are actualized after another computation should replace the old ones?
 * Lab and DataManager should be together?
 * Input Variables not stringables.
