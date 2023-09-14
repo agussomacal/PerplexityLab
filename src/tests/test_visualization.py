@@ -54,7 +54,16 @@ class TestVizUtils(unittest.TestCase):
         paths = generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
                              z=lambda x, y: y / x, folder_by=["k"])
         assert len(paths) == 2
-        assert "/k0/" in paths[0]+paths[1] and "/k1/" in paths[0]+paths[1]
+        assert "/k0/" in paths[0] + paths[1] and "/k1/" in paths[0] + paths[1]
+        assert all([isinstance(path, str) for path in paths])
+
+    def test_plot_versus_folderpath(self):
+        paths = generic_plot(self.data_manager, path=[self.data_manager.path.joinpath("pepe")], x="x", y="z",
+                             label="preprocessing", plot_func=sns.lineplot,
+                             z=lambda x, y: y / x, folder_by=["k"])
+        assert len(paths) == 4
+        assert "/k0/" in paths[0] and "/k0/" in paths[1]
+        assert "/k1/" in paths[2] and "/k1/" in paths[3]
         assert all([isinstance(path, str) for path in paths])
 
     def test_plot_versus_boxplot(self):

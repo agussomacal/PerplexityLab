@@ -83,8 +83,17 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
                            ylabel=None, **kwargs):
 
             with data_manager.track_emissions("figures"):
-                path = data_manager.path.joinpath(folder) if path is None else Path(path)
-                Path(path).mkdir(parents=True, exist_ok=True)
+                # define where the plot will be done, maybe multiple places.
+                default_path = data_manager.path.joinpath(folder) if folder != "" else data_manager.path
+                if path is None:
+                    paths = [default_path]
+                elif isinstance(path, list):
+                    paths = path + [default_path]
+                else:
+                    paths = [path, default_path]
+                paths = [Path(p) for p in paths]
+                [p.mkdir(parents=True, exist_ok=True) for p in paths]
+
                 plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
                 axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
                 folder_by = folder_by if isinstance(folder_by, list) else [folder_by]
@@ -118,25 +127,26 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
                     for grouping_vars_folder, data2plot_folder in \
                             group(dm, names=vars4plot.union(plot_by, axes_by, folder_by), by=folder_by,
                                   **specified_vars):
-                        if len(folder_by) > 0:
-                            folder_name = clean_str4saving(
-                                "_".join(["{}{}".format(k, v) for k, v in grouping_vars_folder.items()]))
-                            path2plot = path.joinpath(folder_name)
-                            Path(path2plot).mkdir(parents=True, exist_ok=True)
-                        else:
-                            path2plot = copy.copy(path)
-                        for grouping_vars, data2plot in group(data2plot_folder, names=vars4plot.union(plot_by, axes_by, folder_by),
-                                                              by=plot_by):
-                            # naming the plot
-                            extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
-                            plot_name = (name if name is not None else plot_function.__name__)
-                            if len(extra_info) > 1:
-                                plot_name += "_" + extra_info
-                            plot_name = clean_str4saving(plot_name)
-                            plot_name = f"{path2plot}/{plot_name}{format}"
-                            if plot_again or not os.path.exists(plot_name):
-                                yield list(
-                                    group(data2plot, names=vars4plot.union(plot_by, axes_by, folder_by), by=axes_by)), plot_name
+                        for path2plot in paths:
+                            if len(folder_by) > 0:
+                                folder_name = clean_str4saving(
+                                    "_".join(["{}{}".format(k, v) for k, v in grouping_vars_folder.items()]))
+                                path2plot = path2plot.joinpath(folder_name)
+                                Path(path2plot).mkdir(parents=True, exist_ok=True)
+                            for grouping_vars, data2plot in group(data2plot_folder,
+                                                                  names=vars4plot.union(plot_by, axes_by, folder_by),
+                                                                  by=plot_by):
+                                # naming the plot
+                                extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                                plot_name = (name if name is not None else plot_function.__name__)
+                                if len(extra_info) > 1:
+                                    plot_name += "_" + extra_info
+                                plot_name = clean_str4saving(plot_name)
+                                plot_name = f"{path2plot}/{plot_name}{format}"
+                                if plot_again or not os.path.exists(plot_name):
+                                    yield list(
+                                        group(data2plot, names=vars4plot.union(plot_by, axes_by, folder_by),
+                                              by=axes_by)), plot_name
 
                 def parallel_func(args):
                     data2plot_per_plot, plot_name = args
