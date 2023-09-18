@@ -81,7 +81,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
                            savefig=True,
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
-
+            # TODO: make it work
+            assert num_cores == 1, "Doesn not work for multiplecores."
             with data_manager.track_emissions("figures"):
                 # define where the plot will be done, maybe multiple places.
                 default_path = data_manager.path.joinpath(folder) if folder != "" else data_manager.path
