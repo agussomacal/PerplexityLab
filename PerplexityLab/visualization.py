@@ -2,6 +2,7 @@ import copy
 import inspect
 import itertools
 import os
+import warnings
 from contextlib import contextmanager
 from inspect import signature
 from pathlib import Path
@@ -82,7 +83,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
             # TODO: make it work
-            assert num_cores == 1, "Doesn not work for multiplecores."
+            if num_cores >= 1:
+                warnings.warn("Doesn not work for multiplecores when passing a lambda function.")
             with data_manager.track_emissions("figures"):
                 # define where the plot will be done, maybe multiple places.
                 default_path = data_manager.path.joinpath(folder) if folder != "" else data_manager.path
