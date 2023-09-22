@@ -62,8 +62,8 @@ class RunsInfo2Latex:
                 print(f"Preamble already in LaTex file {self.path2latex}. Aborting insertion.")
                 return
 
-        value = "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" \
-                "%              Perplexity inserter preamble                %\n" \
+        value = "\n\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" \
+                "%                    Perplexity preamble                     %\n" \
                 "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" \
                 "% Import packages and define command \insertval for inputing experiments information directly \n" \
                 "% into the latex to keep an updated-paired version of the article.\n\n" \
@@ -74,10 +74,25 @@ class RunsInfo2Latex:
                 "% % import data\n" \
                 "% % Loads mydata.dat with column headers 'thekey' and 'thevalue'\n" \
                 "% \\newcommand{\perplexityinsert}[1]{\DTLfetch{runsinfo}{thekey}{#1}{thevalue}}\n" \
-                "\\newcommand{\perplexityinsert}[1]{\DTLgetvalueforkey{\datavalue}{thevalue}{runsinfo}{thekey}{#1}\datavalue}\n" \
+                "\\newcommand{\perplexityinsert}[1]{\DTLgetvalueforkey{\datavalue}{thevalue}{runsinfo}{thekey}{#1}\datavalue}\n\n" \
+                "% Import packages and define command \ierplexitytable for inputing tables directly \n" \
+                "\\usepackage{csvsimple}\n" \
+                "\makeatletter\n" \
+                "\csvset{\n" \
+                "  autotabularcenter/.style={\n" \
+                "    file=#1,\n" \
+                "    after head=\csv@pretable\\begin{tabular}{|*{\csv@columncount}{c|}}\csv@tablehead,\n" \
+                "    table head=\hline\csvlinetotablerow\\\\\\hline,\n" \
+                "    late after line=\\\\,\n" \
+                "    table foot=\\\\\\hline,\n" \
+                "    late after last line=\csv@tablefoot\end{tabular}\csv@posttable,\n" \
+                "    command=\csvlinetotablerow},\n" \
+                "}\n" \
+                "\makeatother\n" \
+                "\\newcommand{\perplexitytable}[2][]{\csvloop{autotabularcenter={#2},#1}}\n" \
                 "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" \
-                "%                End Perplexity inserter                   %\n" \
-                "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+                "%                End Perplexity preamble                   %\n" \
+                "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n\n"
         contents.insert(index, value)
 
         with open(self.path2latex, "w") as f:
