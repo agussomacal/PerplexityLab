@@ -82,6 +82,14 @@ class NamedPartial:
         self.__name__ = func.__name__  # + "_" + "_".join(list(map(str, args))) + "_".join(
         # ["{}{}".format(k, v) for k, v in kwargs.items()])
 
+    def add_prefix_to_name(self, prefix):
+        self.__name__ = str(prefix) + self.__name__
+        return self
+
+    def add_sufix_to_name(self, sufix):
+        self.__name__ = self.__name__ + str(sufix)
+        return self
+
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs)
 

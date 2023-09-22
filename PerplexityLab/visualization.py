@@ -82,6 +82,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
                            savefig=True,
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
+            format = format if format[0] == "." else "." + format
+
             # TODO: make it work
             if num_cores >= 1:
                 warnings.warn("Doesn not work for multiplecores when passing a lambda function.")
