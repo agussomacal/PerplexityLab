@@ -85,7 +85,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], l
             format = format if format[0] == "." else "." + format
 
             # TODO: make it work
-            if num_cores >= 1:
+            if num_cores > 1:
                 warnings.warn("Doesn not work for multiplecores when passing a lambda function.")
             with data_manager.track_emissions("figures"):
                 # define where the plot will be done, maybe multiple places.
