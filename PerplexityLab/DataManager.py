@@ -300,9 +300,20 @@ def dmfilter(datamanager: Union[DataManager, Dict[str, List]], names: Union[List
     return {k: [sub_dataset[k][i] for i in accepted_indexes] for k in names}
 
 
-def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], by: Union[Set, List],
+def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set] = None, by: Union[Set, List] = None,
           **filters: List) \
         -> Generator[Tuple[Dict[str, List], Dict[str, List]], None, None]:
+    """
+
+    :param datamanager:
+    :param names:
+    :param by:
+    :param filters:
+    :return: grouped_vars dictionary, subset of the dataset with one of the available grouped_vars
+    """
+    names = datamanager.columns if names is None else names
+    by = [] if names is None else by
+
     assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."
     sub_dataset = dmfilter(datamanager, names=set(names).union(by), **filters)
 

@@ -25,6 +25,15 @@ class TestVizUtils(unittest.TestCase):
                                         num_cores=1, forget=True, save_on_iteration=False,
                                         x=np.linspace(-1, 1), k=[0, 1])
 
+    def test_group_by_plot(self):
+        @perplex_plot(group_by="k")
+        def plot(fig, ax, x, z, k):
+            ax.scatter(x, z, label=f"k={k}")
+
+        paths = plot(self.data_manager, z=lambda x, y: y / x)
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+
     def test_one_line_iterator(self):
         @perplex_plot()
         @one_line_iterator
