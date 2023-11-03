@@ -21,6 +21,14 @@ class RunsInfo2Latex:
 
     def __init__(self, path2latex, sep=";"):
         self.path2latex = Path(path2latex)
+        self.latex_folder.mkdir(exist_ok=True, parents=True)
+
+        if not os.path.exists(path2latex):
+            self.latex_connector = Code2LatexConnector(self.latex_folder, str(path2latex).split("/")[-1])
+            self.latex_connector.create_template()
+            self.latex_connector.make_report()
+            self.latex_connector.compile()
+            # self.path2latex.touch(exist_ok=True)
         self.sep = sep
         if os.path.exists(self.runs_info_filepath):
             with open(self.runs_info_filepath, "r") as f:
@@ -155,7 +163,7 @@ class Code2LatexConnector:
         self.add_line('\\newpage')
 
         # self.add_line('\\end{document}', section=self.main_section)
-        #
+
         # with open(f'{self.path2latex_file}', 'w') as f:
         #     f.write(self.text[self.main_section])
 

@@ -8,7 +8,7 @@ class TestVizUtils(unittest.TestCase):
     def setUp(self) -> None:
         path = Path(__file__).parent.joinpath("TestLatexConnector")
         self.latex_connector = Code2LatexConnector(path, "TestLatexConnector")
-        self.latex_connector.create_template()
+        # self.latex_connector.create_template()
 
     def test_RunsInfo2Latex(self):
         runsinfo = RunsInfo2Latex(path2latex=self.latex_connector.path2latex_file)
