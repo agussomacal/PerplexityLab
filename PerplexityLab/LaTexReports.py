@@ -24,11 +24,7 @@ class RunsInfo2Latex:
         self.latex_folder.mkdir(exist_ok=True, parents=True)
 
         if not os.path.exists(path2latex):
-            self.latex_connector = Code2LatexConnector(self.latex_folder, str(path2latex).split("/")[-1])
-            self.latex_connector.create_template()
-            self.latex_connector.make_report()
-            self.latex_connector.compile()
-            # self.path2latex.touch(exist_ok=True)
+            self.path2latex.touch(exist_ok=True)
         self.sep = sep
         if os.path.exists(self.runs_info_filepath):
             with open(self.runs_info_filepath, "r") as f:
