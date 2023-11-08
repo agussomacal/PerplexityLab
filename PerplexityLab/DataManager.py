@@ -238,10 +238,18 @@ class DataManager:
                               ignore_warnings=True)
             tracker.start()
             yield
+
+            # solve the issue when the csv of emissions gets wrongly saved.
             try:
-                # TODO: solve the issue when the csv of emissions gets wrongly saved.
                 tracker.stop()
             except:
+                # filter out extra columns because of multiple saves or reads.
+                pd.read_csv(self.emissions_path).iloc[:, :13].to_csv(self.emissions_path, index=False)
+
+                try:
+                    tracker.stop()
+                except:
+                    pass
                 print("Some problem with CO2 emissions tracker.")
         else:
             yield
