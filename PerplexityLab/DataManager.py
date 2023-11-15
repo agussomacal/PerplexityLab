@@ -244,7 +244,7 @@ class DataManager:
                 tracker.stop()
             except:
                 # filter out extra columns because of multiple saves or reads.
-                pd.read_csv(self.emissions_path).iloc[:, :13].to_csv(self.emissions_path, index=False)
+                pd.read_csv(self.emissions_path, usecols=list(range(13))).to_csv(self.emissions_path, index=False)
 
                 try:
                     tracker.stop()
