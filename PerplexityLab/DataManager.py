@@ -12,7 +12,7 @@ import joblib
 import pandas as pd
 from benedict import benedict
 
-from PerplexityLab.miscellaneous import timeit
+from PerplexityLab.miscellaneous import timeit, DefaultOrderedDict
 
 ALL = "AllParamsBlockVars"
 
@@ -308,8 +308,40 @@ def dmfilter(datamanager: Union[DataManager, Dict[str, List]], names: Union[List
     return {k: [sub_dataset[k][i] for i in accepted_indexes] for k in names}
 
 
+def dodl():
+    return DefaultOrderedDict(list)
+
+
+def universal_ordering(element):
+    if isinstance(element, (int, float)):
+        return element
+    else:
+        return str(element)
+
+
+def group_unsorted(sub_dataset, names, by, sort_by):
+    if len(by) > 0 or len(sort_by) > 0:
+        length = len(sub_dataset[next(iter(by if len(by) > 0 else sort_by))])
+        if len(sort_by) == 0:
+            order = range(length)
+        else:
+            order = sorted(zip(range(length), zip(*[map(universal_ordering, sub_dataset[k]) for k in sort_by])),
+                           key=lambda x: x[1])
+            order = list(zip(*order))[0]
+        grouping = DefaultOrderedDict(dodl)
+        for i in order:
+            key = tuple([sub_dataset[k][i] for k in by])
+            for k in names:
+                grouping[key][k].append(sub_dataset[k][i])
+
+        for key, data in grouping.items():
+            yield OrderedDict([(k, v) for k, v in zip(by, key)]), data
+    else:
+        yield dict(), sub_dataset
+
+
 def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set] = None, by: Union[Set, List] = None,
-          **filters: List) \
+          sort_by=None, **filters: List) \
         -> Generator[Tuple[Dict[str, List], Dict[str, List]], None, None]:
     """
 
@@ -319,21 +351,15 @@ def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, S
     :param filters:
     :return: grouped_vars dictionary, subset of the dataset with one of the available grouped_vars
     """
+    sort_by = [] if sort_by is None else sort_by
     names = datamanager.columns if names is None else names
     by = [] if names is None else by
 
     assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."
-    sub_dataset = dmfilter(datamanager, names=set(names).union(by), **filters)
+    sub_dataset = dmfilter(datamanager, names=set(names).union(by).union(sort_by), **filters)
 
-    if len(by) > 0:
-        length = len(sub_dataset[next(iter(by))])
-        order = sorted(zip(range(length), map(str, zip(*[sub_dataset[k] for k in by]))), key=lambda x: x[1])
-        for _, indexes in itertools.groupby(order, key=lambda x: x[1]):
-            indexes = [i[0] for i in indexes]
-            yield OrderedDict([(k, sub_dataset[k][indexes[0]]) for k in by]), \
-                OrderedDict([(k, [sub_dataset[k][i] for i in indexes]) for k in names])
-    else:
-        yield dict(), OrderedDict([(k, sub_dataset[k]) for k in names])
+    for k, v in group_unsorted(sub_dataset, names, by, sort_by):
+        yield k, v
 
 
 def apply(datamanager: Union[DataManager, Dict], names: Union[Set[str], List[str]], **kwargs: Callable):

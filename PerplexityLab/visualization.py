@@ -75,7 +75,8 @@ def one_line_iterator(plot_function):
     return new_func
 
 
-def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], group_by=[], legend=True):
+def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], group_by=[], sort_by_default=[],
+                 legend=True):
     """
 
     :param plot_by_default:
@@ -94,7 +95,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
         """
 
         def decorated_func(data_manager: DataManager, path=None, name=None, folder="", plot_by=plot_by_default,
-                           axes_by=axes_by_default, folder_by=folder_by_default, axes_xy_proportions=(10, 8),
+                           axes_by=axes_by_default, folder_by=folder_by_default, sort_by=sort_by_default,
+                           axes_xy_proportions=(10, 8),
                            savefig=True,
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
@@ -117,6 +119,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
 
                 plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
                 axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
+                sort_by = sort_by if isinstance(sort_by, list) else [sort_by]
                 folder_by = folder_by if isinstance(folder_by, list) else [folder_by]
 
                 function_arg_names = inspect.getfullargspec(plot_function).args
@@ -130,26 +133,27 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                 }
                 functions2apply = {
                     k: v for k, v in kwargs.items() if
-                    k in function_arg_names + plot_by + axes_by + folder_by + group_by
+                    k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
                     and k not in specified_vars.keys() and isinstance(v, Callable)
                     and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
                 }
                 functions2apply_var_needs = set(itertools.chain(*[
                     inspect.getfullargspec(v).args for k, v in kwargs.items() if
-                    k in function_arg_names + plot_by + axes_by + folder_by + group_by
+                    k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
                     and k not in specified_vars.keys() and isinstance(v, Callable)
                     and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
                 ]))
                 extra_arguments = {k: v for k, v in kwargs.items() if
                                    k in function_arg_names and k not in specified_vars.keys()
                                    and k not in functions2apply.keys()}
-                names = vars4plot.union(plot_by, axes_by, folder_by, group_by, specified_vars.keys()).difference(
+                names = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by,
+                                        specified_vars.keys()).difference(
                     functions2apply.keys()).union(
                     functions2apply_var_needs)
                 dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
                 dm = apply(dm, names=names, **functions2apply)  # now apply the functions
                 vars4plot.update(functions2apply.keys())
-                names4plot = vars4plot.union(plot_by, axes_by, folder_by, group_by)
+                names4plot = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by)
 
                 def iterator():
                     for grouping_vars_folder, data2plot_folder in \
@@ -174,7 +178,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                 if plot_again or not os.path.exists(plot_name):
                                     yield list(
                                         group(data2plot, names=names4plot,
-                                              by=axes_by)), plot_name
+                                              by=axes_by, sort_by=sort_by)), plot_name
 
                 def parallel_func(args):
                     data2plot_per_plot, plot_name = args
@@ -186,9 +190,11 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                             for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
                                 ax = get_sub_ax(axes, i)
                                 ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
-                                for selection, sub_data2plot_in_ax in group(data2plot_in_ax, names=names4plot, by=group_by):
+                                for selection, sub_data2plot_in_ax in group(data2plot_in_ax, names=names4plot,
+                                                                            by=group_by, sort_by=sort_by):
                                     plot_function(fig=fig, ax=ax,
-                                                  **{k: v if k not in group_by else selection[k] for k, v in sub_data2plot_in_ax.items() if
+                                                  **{k: v if k not in group_by else selection[k] for k, v in
+                                                     sub_data2plot_in_ax.items() if
                                                      k in function_arg_names},
                                                   **extra_arguments)
                                 if add_legend:
@@ -251,7 +257,8 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
 
         data = pd.DataFrame.from_dict(unfold(dict4plot))
         # data = pd.DataFrame.from_dict(unfold(dict4plot))
-        data = data.sort_values(by=sort_by + ([label] if label is not None else []) + [x]).reset_index(drop=True)
+        data = data.sort_values(by=sort_by + ([label] if label is not None else []) + [x]).reset_index(
+            drop=True)
         ax.set(xlabel=x, ylabel=y)
         plot_func(data=data, x=x, y=y, hue=label, ax=ax)
         # add proper Dim values as x labels

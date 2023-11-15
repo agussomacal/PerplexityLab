@@ -91,12 +91,20 @@ class TestDataManager(unittest.TestCase):
         self.add_some_results()
         self.dm.add_result(input_params={"a": 2, "b": 5}, input_funcs=dict(), function_block="block1",
                            function_name="f_name", function_result={"res": 1})
+        g = list(group(self.dm["a", "b"], names=["a", "b"], by=["b"], sort_by=["a"]))
+        assert len(g) == 2
+        assert g[0][1]["a"] == [1, 2]
+        assert g[0][1]["b"] == [2, 2]
+        g = list(group(self.dm["a", "b"], names=["a", "b"], by=["b"], sort_by=["b"]))
+        assert len(g) == 2
+
         for dby, d in group(self.dm, names=["a", "b"], by=["a"]):
             assert len(set(d["a"])) == 1
         for dby, d in group(self.dm, names=["a", "b"], by=[]):
             assert d["a"] == self.dm["a"]
         for dby, d in group(self.dm["a", "b"], names=["a", "b"], by=[]):
             assert d["a"] == self.dm["a"]
+
 
     def test_apply(self):
         self.add_some_results()

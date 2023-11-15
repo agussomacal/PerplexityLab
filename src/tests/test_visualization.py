@@ -34,6 +34,15 @@ class TestVizUtils(unittest.TestCase):
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
 
+    def test_group_by_plot_sort_by(self):
+        @perplex_plot(group_by="k")
+        def plot(fig, ax, x, z, k):
+            ax.plot(x, z, label=f"k={k}")
+
+        paths = plot(self.data_manager, name="sort_test_2", z=lambda x, y: y / x, sort_by=["z"])
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+
     def test_one_line_iterator(self):
         @perplex_plot()
         @one_line_iterator
@@ -56,6 +65,13 @@ class TestVizUtils(unittest.TestCase):
     def test_plot_versus(self):
         paths = generic_plot(self.data_manager, x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
                              z=lambda x, y: y / x, axes_by=["k"])
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+
+    def test_plot_versus_sort(self):
+        paths = generic_plot(self.data_manager, name="sort_test", x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
+                             z=lambda x, y: y / x, axes_by=["k"], sort_by=["z"]
+                             )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
 
