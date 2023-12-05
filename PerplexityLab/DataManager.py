@@ -61,10 +61,12 @@ def common_ancestors(names, data: Dict[str, Union[DatasetParam, DatasetFBlock, D
 
 
 class DataManager:
-    def __init__(self, path: Union[str, Path], name: str, format=JOBLIB, country_alpha_code=None, trackCO2=False):
+    def __init__(self, path: Union[str, Path], name: str, format=JOBLIB, country_alpha_code=None, trackCO2=False,
+                 emissions_path=None):
         self.name = name
         self.path = Path(path).joinpath(name)
         self.path.mkdir(parents=True, exist_ok=True)
+        self._emissions_path = emissions_path
 
         if format not in VALID_FORMATS:
             raise Exception(f"Saving format {format} not implemented. Valid formats are: {VALID_FORMATS}.")
@@ -225,7 +227,7 @@ class DataManager:
 
     @property
     def emissions_path(self):
-        return f"{self.path.parent}/emissions.csv"
+        return f"{self.path.parent if self._emissions_path is None else self._emissions_path}/emissions.csv"
 
     @contextmanager
     def track_emissions(self, description):
