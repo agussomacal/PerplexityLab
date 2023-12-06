@@ -101,6 +101,18 @@ class DataManager:
         else:
             raise Exception(f"Variable {variable} not in dataset.")
 
+    def set_variable(self, input_params, input_funcs, variable, value):
+        if variable in self.variables.keys():
+            self.database.set([subset_dict(input_params, self.variables[variable].root),
+                               subset_dict(input_funcs, self.variables[variable].dependencies),
+                               variable], value)
+        elif variable in input_params.keys():
+            raise Exception("Only setting variables, not parameters.")
+        elif variable in input_funcs.keys():
+            raise Exception("Only setting variables, not functions.")
+        else:
+            raise Exception(f"Variable {variable} not in dataset.")
+
     def get_output_root_and_vars(self, input_params, input_funcs, function_block):
         # TODO: this can be saved instead of being recalculated
         # the new vars to be considered will depend on the previous computed blocks/funcs and the actual block/func
@@ -185,6 +197,22 @@ class DataManager:
             # one only item gives the list directly instead of the dictionary, for that should be given in list form
             # for example ["name"]
             return list(self.__getitem__([item])[item])
+        else:
+            raise Exception("Not implemented.")
+
+    def apply_transform(self, item, transformation: Callable):
+        if not isinstance(item, (set, list, tuple)):
+            common_params = {item}.intersection(self.parameters.keys())
+            common_params.update(common_ancestors([item], self.parameters.copy(), by="root"))
+            common_params.update(common_ancestors([item], self.variables.copy(), by="root"))
+            common_params.update(common_ancestors([item], self.function_blocks.copy(), by="root"))
+
+            for input_params in experiment_param_generator(**{p: self.parameters[p].values for p in common_params}):
+                if self.is_in_database(input_params):
+                    for input_funcs, selected_variables in self.experiments_iterator(input_params, [item]):
+                        value = self.get_variable(input_params, input_funcs, item)
+                        self.set_variable(input_params, input_funcs, item, transformation(value))
+
         else:
             raise Exception("Not implemented.")
 
