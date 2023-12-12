@@ -30,7 +30,9 @@ class TestVizUtils(unittest.TestCase):
         def plot(fig, ax, x, z, k):
             ax.scatter(x, z, label=f"k={k}")
 
-        paths = plot(self.data_manager, z=lambda x, y: y / x)
+        paths = plot(self.data_manager, z=lambda x, y: y / x,
+                     axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                     legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'}, )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
 
@@ -69,7 +71,8 @@ class TestVizUtils(unittest.TestCase):
         assert all([isinstance(path, str) for path in paths])
 
     def test_plot_versus_sort(self):
-        paths = generic_plot(self.data_manager, name="sort_test", x="x", y="z", label="preprocessing", plot_func=sns.lineplot,
+        paths = generic_plot(self.data_manager, name="sort_test", x="x", y="z", label="preprocessing",
+                             plot_func=sns.lineplot,
                              z=lambda x, y: y / x, axes_by=["k"], sort_by=["z"]
                              )
         assert len(paths) == 1

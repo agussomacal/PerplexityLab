@@ -75,6 +75,19 @@ def one_line_iterator(plot_function):
     return new_func
 
 
+def set_latex_fonts(font_family="amssymb", packages=("amsmath",)):
+    # ("babel", "lmodern", "amsmath", "amsthm", "amssymb", "amsfonts", "fontenc", "inputenc")
+    # preamble=r'\usepackage{babel}\usepackage{lmodern}\usepackage{amsmath,amsthm,amssymb}\usepackage{amsfonts}\usepackage[T1]{fontenc}\usepackage[utf8]{inputenc}'
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": font_family,
+    })
+    plt.rc('text.latex',
+           preamble=r''.join([f"\\usepackage{{{package}}}" for package in packages])
+           # )
+           )
+
+
 def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], group_by=[], sort_by_default=[],
                  legend=True):
     """
@@ -98,9 +111,16 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            axes_by=axes_by_default, folder_by=folder_by_default, sort_by=sort_by_default,
                            axes_xy_proportions=(10, 8),
                            savefig=True,
+                           axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 14},
+                           legend_font_dict={'weight': 'normal', "size": 18, 'stretch': 'normal'},
+                           font_family="amssymb",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
             format = format if format[0] == "." else "." + format
+            plt.rcParams.update({
+                "text.usetex": True,
+                "font.family": font_family,
+            })
 
             # TODO: make it work
             if num_cores > 1:
@@ -198,11 +218,17 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                                      k in function_arg_names},
                                                   **extra_arguments)
                                 if add_legend:
-                                    ax.legend()
+                                    ax.legend(prop=legend_font_dict)
                                 if xlabel is not None:
-                                    ax.set_xlabel(xlabel)
+                                    ax.set_xlabel(xlabel, fontdict=axis_font_dict)
                                 if ylabel is not None:
-                                    ax.set_ylabel(ylabel)
+                                    ax.set_ylabel(ylabel, fontdict=axis_font_dict)
+                                # take the same size as the label
+                                if "size" in axis_font_dict.keys():
+                                    for tick in ax.xaxis.get_major_ticks():
+                                        tick.label.set_fontsize(axis_font_dict["size"])
+                                    for tick in ax.yaxis.get_major_ticks():
+                                        tick.label.set_fontsize(axis_font_dict["size"])
                             plt.tight_layout()
                             return plot_name
 
