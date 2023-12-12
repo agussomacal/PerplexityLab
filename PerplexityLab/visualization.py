@@ -113,6 +113,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            savefig=True,
                            axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 14},
                            legend_font_dict={'weight': 'normal', "size": 18, 'stretch': 'normal'},
+                           xticks=None, yticks=None,
                            font_family="amssymb",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, **kwargs):
@@ -223,6 +224,12 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                     ax.set_xlabel(xlabel, fontdict=axis_font_dict)
                                 if ylabel is not None:
                                     ax.set_ylabel(ylabel, fontdict=axis_font_dict)
+
+                                if xticks is not None:
+                                    ax.set_xticks(xticks, xticks)
+                                if yticks is not None:
+                                    ax.set_yticks(yticks, yticks)
+
                                 # take the same size as the label
                                 if "size" in axis_font_dict.keys():
                                     for tick in ax.xaxis.get_major_ticks():

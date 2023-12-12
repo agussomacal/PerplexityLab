@@ -41,7 +41,10 @@ class TestVizUtils(unittest.TestCase):
         def plot(fig, ax, x, z, k):
             ax.plot(x, z, label=f"k={k}")
 
-        paths = plot(self.data_manager, name="sort_test_2", z=lambda x, y: y / x, sort_by=["z"])
+        paths = plot(self.data_manager, name="sort_test_2", z=lambda x, y: y / x, sort_by=["z"],
+                     xlabel="X", ylabel="Y", xticks=[-0.5, 0, 0.7],
+                     axis_font_dict={'color': 'black', 'weight': 'bold', 'size': 25},
+                     )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
 
