@@ -122,7 +122,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            xticks=None, yticks=None,
                            font_family="amssymb",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
-                           ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB, **kwargs):
+                           ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
+                           only_create_preimage_data=False, **kwargs):
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -199,69 +200,74 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                         else:
                             raise Exception("Not implemented yet.")
 
-                def iterator():
-                    for grouping_vars_folder, data2plot_folder in \
-                            group(dm, names=names4plot, by=folder_by,
-                                  **specified_vars):
-                        for path2plot in paths:
-                            if len(folder_by) > 0:
-                                folder_name = clean_str4saving(
-                                    "_".join(["{}{}".format(k, v) for k, v in grouping_vars_folder.items()]))
-                                path2plot = path2plot.joinpath(folder_name)
-                                Path(path2plot).mkdir(parents=True, exist_ok=True)
-                            for grouping_vars, data2plot in group(data2plot_folder,
-                                                                  names=names4plot,
-                                                                  by=plot_by):
-                                # naming the plot
-                                extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
-                                plot_name = (name if name is not None else plot_function.__name__)
-                                if len(extra_info) > 1:
-                                    plot_name += "_" + extra_info
-                                plot_name = clean_str4saving(plot_name)
-                                plot_name = f"{path2plot}/{plot_name}{format}"
-                                if plot_again or not os.path.exists(plot_name):
-                                    yield list(
-                                        group(data2plot, names=names4plot,
-                                              by=axes_by, sort_by=sort_by)), plot_name
+                if only_create_preimage_data:
+                    return []
+                else:
+                    def iterator():
+                        for grouping_vars_folder, data2plot_folder in \
+                                group(dm, names=names4plot, by=folder_by,
+                                      **specified_vars):
+                            for path2plot in paths:
+                                if len(folder_by) > 0:
+                                    folder_name = clean_str4saving(
+                                        "_".join(["{}{}".format(k, v) for k, v in grouping_vars_folder.items()]))
+                                    path2plot = path2plot.joinpath(folder_name)
+                                    Path(path2plot).mkdir(parents=True, exist_ok=True)
+                                for grouping_vars, data2plot in group(data2plot_folder,
+                                                                      names=names4plot,
+                                                                      by=plot_by):
+                                    # naming the plot
+                                    extra_info = "_".join(["{}{}".format(k, v) for k, v in grouping_vars.items()])
+                                    plot_name = (name if name is not None else plot_function.__name__)
+                                    if len(extra_info) > 1:
+                                        plot_name += "_" + extra_info
+                                    plot_name = clean_str4saving(plot_name)
+                                    plot_name = f"{path2plot}/{plot_name}{format}"
+                                    if plot_again or not os.path.exists(plot_name):
+                                        yield list(
+                                            group(data2plot, names=names4plot,
+                                                  by=axes_by, sort_by=sort_by)), plot_name
 
-                def parallel_func(args):
-                    data2plot_per_plot, plot_name = args
-                    with timeit("Plot {}\n".format(plot_name)):
-                        with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name, savefig=savefig,
-                                                return_fig=True, axes_xy_proportions=axes_xy_proportions,
-                                                dpi=dpi) as fax:
-                            fig, axes = fax
-                            for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
-                                ax = get_sub_ax(axes, i)
-                                ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
-                                for selection, sub_data2plot_in_ax in group(data2plot_in_ax, names=names4plot,
-                                                                            by=group_by, sort_by=sort_by):
-                                    plot_function(fig=fig, ax=ax,
-                                                  **{k: v if k not in group_by else selection[k] for k, v in
-                                                     sub_data2plot_in_ax.items() if
-                                                     k in function_arg_names},
-                                                  **extra_arguments)
-                                if add_legend:
-                                    ax.legend(prop=legend_font_dict)
-                                if xlabel is not None:
-                                    ax.set_xlabel(xlabel, fontdict=axis_font_dict)
-                                if ylabel is not None:
-                                    ax.set_ylabel(ylabel, fontdict=axis_font_dict)
+                    def parallel_func(args):
+                        data2plot_per_plot, plot_name = args
+                        with timeit("Plot {}\n".format(plot_name)):
+                            with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name,
+                                                    savefig=savefig,
+                                                    return_fig=True, axes_xy_proportions=axes_xy_proportions,
+                                                    dpi=dpi) as fax:
+                                fig, axes = fax
+                                for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
+                                    ax = get_sub_ax(axes, i)
+                                    ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
+                                    for selection, sub_data2plot_in_ax in group(data2plot_in_ax, names=names4plot,
+                                                                                by=group_by, sort_by=sort_by):
+                                        plot_function(fig=fig, ax=ax,
+                                                      **{k: v if k not in group_by else selection[k] for k, v in
+                                                         sub_data2plot_in_ax.items() if
+                                                         k in function_arg_names},
+                                                      **extra_arguments)
+                                    if add_legend:
+                                        ax.legend(prop=legend_font_dict)
+                                    if xlabel is not None:
+                                        ax.set_xlabel(xlabel, fontdict=axis_font_dict)
+                                    if ylabel is not None:
+                                        ax.set_ylabel(ylabel, fontdict=axis_font_dict)
 
-                                if xticks is not None:
-                                    ax.set_xticks(xticks, xticks)
-                                if yticks is not None:
-                                    ax.set_yticks(yticks, yticks)
+                                    if xticks is not None:
+                                        ax.set_xticks(xticks, xticks)
+                                    if yticks is not None:
+                                        ax.set_yticks(yticks, yticks)
 
-                                # take the same size as the label
-                                if "size" in axis_font_dict.keys():
-                                    ax.tick_params(
-                                        labelsize=axis_font_dict["size"] if "size" in axis_font_dict.keys() else None)
-                            plt.tight_layout()
-                            return plot_name
+                                    # take the same size as the label
+                                    if "size" in axis_font_dict.keys():
+                                        ax.tick_params(
+                                            labelsize=axis_font_dict[
+                                                "size"] if "size" in axis_font_dict.keys() else None)
+                                plt.tight_layout()
+                                return plot_name
 
-                plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
-            return plot_paths
+                    plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
+                return plot_paths
 
         return decorated_func
 

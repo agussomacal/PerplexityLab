@@ -73,10 +73,19 @@ class TestVizUtils(unittest.TestCase):
                      create_preimage_data=True
                      )
         t2 = time.time() - t0
-        print(t2-t1)
+        print(t2 - t1)
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
         assert t2 < t1
+        paths = plot(self.data_manager, name="nonexistentplot", z=lambda x, y: y / x, sort_by=["z"],
+                     xlabel="X", ylabel="Y", xticks=[-0.5, 0, 0.7],
+                     axis_font_dict={'color': 'black', 'weight': 'bold', 'size': 25},
+                     create_preimage_data=True,
+                     only_create_preimage_data=True
+                     )
+        assert len(paths) == 0
+        assert os.path.exists(get_path_name2replot_data(self.data_manager, plot, "nonexistentplot", JOBLIB))
+        assert not os.path.exists(get_path_name2replot_data(self.data_manager, plot, "nonexistentplot", JOBLIB).replace("data2replot_", ""))
 
     def test_one_line_iterator(self):
         @perplex_plot()
