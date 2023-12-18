@@ -232,10 +232,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
 
                                 # take the same size as the label
                                 if "size" in axis_font_dict.keys():
-                                    for tick in ax.xaxis.get_major_ticks():
-                                        tick.label.set_fontsize(axis_font_dict["size"])
-                                    for tick in ax.yaxis.get_major_ticks():
-                                        tick.label.set_fontsize(axis_font_dict["size"])
+                                    ax.tick_params(
+                                        labelsize=axis_font_dict["size"] if "size" in axis_font_dict.keys() else None)
                             plt.tight_layout()
                             return plot_name
 
