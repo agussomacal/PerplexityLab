@@ -118,10 +118,11 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, **kwargs):
             format = format if format[0] == "." else "." + format
-            plt.rcParams.update({
-                "text.usetex": usetex,
-                "font.family": font_family,
-            })
+            if usetex:
+                plt.rcParams.update({
+                    "text.usetex": usetex,
+                    "font.family": font_family,
+                })
 
             # TODO: make it work
             if num_cores > 1:
