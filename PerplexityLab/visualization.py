@@ -8,13 +8,14 @@ from inspect import signature
 from pathlib import Path
 from typing import Callable, List, Union
 
+import joblib
 import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from makefun import with_signature, wraps
 
-from PerplexityLab.DataManager import DataManager, group, apply, dmfilter
+from PerplexityLab.DataManager import DataManager, group, apply, dmfilter, JOBLIB
 from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving, filter_dict
 
 INCHES_PER_LETTER = 0.11
@@ -116,7 +117,9 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            xticks=None, yticks=None,
                            font_family="amssymb",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
-                           ylabel=None, usetex=True, **kwargs):
+                           ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB, **kwargs):
+            path2rplot_data = (f"{data_manager.path}/"
+                               f"data2replot_{(name if name is not None else plot_function.__name__)}.compressed")
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -124,10 +127,17 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                     "font.family": font_family,
                 })
 
+
             # TODO: make it work
             if num_cores > 1:
                 warnings.warn("Doesn not work for multiplecores when passing a lambda function.")
             with data_manager.track_emissions("figures"):
+
+                plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
+                axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
+                sort_by = sort_by if isinstance(sort_by, list) else [sort_by]
+                folder_by = folder_by if isinstance(folder_by, list) else [folder_by]
+
                 # define where the plot will be done, maybe multiple places.
                 default_path = data_manager.path.joinpath(folder) if folder != "" else data_manager.path
                 if path is None:
@@ -139,43 +149,52 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                 paths = [Path(p) for p in paths]
                 [p.mkdir(parents=True, exist_ok=True) for p in paths]
 
-                plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
-                axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
-                sort_by = sort_by if isinstance(sort_by, list) else [sort_by]
-                folder_by = folder_by if isinstance(folder_by, list) else [folder_by]
-
                 function_arg_names = inspect.getfullargspec(plot_function).args
                 assert len({"fig", "ax"}.intersection(
                     function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
                                                "function but they were not found: {}".format(function_arg_names)
-                vars4plot = set(function_arg_names).intersection(data_manager.columns)
-                specified_vars = {
-                    k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
-                    k in data_manager.columns
-                }
-                functions2apply = {
-                    k: v for k, v in kwargs.items() if
-                    k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
-                    and k not in specified_vars.keys() and isinstance(v, Callable)
-                    and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
-                }
-                functions2apply_var_needs = set(itertools.chain(*[
-                    inspect.getfullargspec(v).args for k, v in kwargs.items() if
-                    k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
-                    and k not in specified_vars.keys() and isinstance(v, Callable)
-                    and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
-                ]))
-                extra_arguments = {k: v for k, v in kwargs.items() if
-                                   k in function_arg_names and k not in specified_vars.keys()
-                                   and k not in functions2apply.keys()}
-                names = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by,
-                                        specified_vars.keys()).difference(
-                    functions2apply.keys()).union(
-                    functions2apply_var_needs)
-                dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
-                dm = apply(dm, names=names, **functions2apply)  # now apply the functions
-                vars4plot.update(functions2apply.keys())
-                names4plot = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by)
+
+                if create_preimage_data and os.path.exists(path2rplot_data):
+                    if preimage_format == JOBLIB:
+                        dm, vars4plot, names4plot, specified_vars, extra_arguments = joblib.load(path2rplot_data)
+                    else:
+                        raise Exception("Not implemented yet.")
+                else:
+                    vars4plot = set(function_arg_names).intersection(data_manager.columns)
+                    specified_vars = {
+                        k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
+                        k in data_manager.columns
+                    }
+                    functions2apply = {
+                        k: v for k, v in kwargs.items() if
+                        k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
+                        and k not in specified_vars.keys() and isinstance(v, Callable)
+                        and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
+                    }
+                    functions2apply_var_needs = set(itertools.chain(*[
+                        inspect.getfullargspec(v).args for k, v in kwargs.items() if
+                        k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
+                        and k not in specified_vars.keys() and isinstance(v, Callable)
+                        and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
+                    ]))
+                    extra_arguments = {k: v for k, v in kwargs.items() if
+                                       k in function_arg_names and k not in specified_vars.keys()
+                                       and k not in functions2apply.keys()}
+                    names = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by,
+                                            specified_vars.keys()).difference(
+                        functions2apply.keys()).union(
+                        functions2apply_var_needs)
+                    dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
+                    dm = apply(dm, names=names, **functions2apply)  # now apply the functions
+                    vars4plot.update(functions2apply.keys())
+                    names4plot = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by)
+
+                    if create_preimage_data:
+                        if preimage_format == JOBLIB:
+                            joblib.dump((dm, vars4plot, names4plot, specified_vars, extra_arguments),
+                                        path2rplot_data)
+                        else:
+                            raise Exception("Not implemented yet.")
 
                 def iterator():
                     for grouping_vars_folder, data2plot_folder in \

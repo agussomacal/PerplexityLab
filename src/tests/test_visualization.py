@@ -1,4 +1,5 @@
 import os
+import time
 import unittest
 
 import numpy as np
@@ -47,6 +48,29 @@ class TestVizUtils(unittest.TestCase):
                      )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
+
+    def test_create_preimage_data(self):
+        @perplex_plot(group_by="k")
+        def plot(fig, ax, x, z, k):
+            ax.plot(x, z, label=f"k={k}")
+
+        t0 = time.time()
+        paths = plot(self.data_manager, name="sort_test_2", z=lambda x, y: y / x, sort_by=["z"],
+                     xlabel="X", ylabel="Y", xticks=[-0.5, 0, 0.7],
+                     axis_font_dict={'color': 'black', 'weight': 'bold', 'size': 25},
+                     create_preimage_data=True
+                     )
+        t1 = time.time() - t0
+        t0 = time.time()
+        paths = plot(self.data_manager, name="sort_test_2", z=lambda x, y: y / x, sort_by=["z"],
+                     xlabel="X", ylabel="Y", xticks=[-0.5, 0, 0.7],
+                     axis_font_dict={'color': 'black', 'weight': 'bold', 'size': 25},
+                     create_preimage_data=True
+                     )
+        t2 = time.time() - t0
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+        assert t2 < t1
 
     def test_one_line_iterator(self):
         @perplex_plot()
