@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import unittest
 
@@ -7,7 +8,8 @@ import seaborn as sns
 
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
-from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot, one_line_iterator
+from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot, one_line_iterator, \
+    get_path_name2replot_data
 
 
 class TestVizUtils(unittest.TestCase):
@@ -54,6 +56,9 @@ class TestVizUtils(unittest.TestCase):
         def plot(fig, ax, x, z, k):
             ax.plot(x, z, label=f"k={k}")
 
+        if os.path.exists(get_path_name2replot_data(self.data_manager, plot, "sort_test_2", JOBLIB)):
+            os.remove(get_path_name2replot_data(self.data_manager, plot, "sort_test_2", JOBLIB))
+
         t0 = time.time()
         paths = plot(self.data_manager, name="sort_test_2", z=lambda x, y: y / x, sort_by=["z"],
                      xlabel="X", ylabel="Y", xticks=[-0.5, 0, 0.7],
@@ -68,6 +73,7 @@ class TestVizUtils(unittest.TestCase):
                      create_preimage_data=True
                      )
         t2 = time.time() - t0
+        print(t2-t1)
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
         assert t2 < t1

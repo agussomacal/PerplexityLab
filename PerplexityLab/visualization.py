@@ -89,6 +89,11 @@ def set_latex_fonts(font_family="amssymb", packages=("amsmath",)):
            )
 
 
+def get_path_name2replot_data(data_manager, plot_function, name, preimage_format):
+    return (f"{data_manager.path}/"
+            f"data2replot_{(name if name is not None else plot_function.__name__)}.{preimage_format}")
+
+
 def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], group_by=[], sort_by_default=[],
                  legend=True):
     """
@@ -118,8 +123,6 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            font_family="amssymb",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB, **kwargs):
-            path2rplot_data = (f"{data_manager.path}/"
-                               f"data2replot_{(name if name is not None else plot_function.__name__)}.compressed")
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -127,11 +130,10 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                     "font.family": font_family,
                 })
 
-
             # TODO: make it work
             if num_cores > 1:
                 warnings.warn("Doesn not work for multiplecores when passing a lambda function.")
-            with data_manager.track_emissions("figures"):
+            with (data_manager.track_emissions("figures")):
 
                 plot_by = plot_by if isinstance(plot_by, list) else [plot_by]
                 axes_by = axes_by if isinstance(axes_by, list) else [axes_by]
@@ -154,9 +156,11 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                     function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
                                                "function but they were not found: {}".format(function_arg_names)
 
-                if create_preimage_data and os.path.exists(path2rplot_data):
+                if create_preimage_data and os.path.exists(
+                        get_path_name2replot_data(data_manager, plot_function, name, preimage_format)):
                     if preimage_format == JOBLIB:
-                        dm, vars4plot, names4plot, specified_vars, extra_arguments = joblib.load(path2rplot_data)
+                        dm, vars4plot, names4plot, specified_vars, extra_arguments = \
+                            joblib.load(get_path_name2replot_data(data_manager, plot_function, name, preimage_format))
                     else:
                         raise Exception("Not implemented yet.")
                 else:
@@ -181,10 +185,9 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                        k in function_arg_names and k not in specified_vars.keys()
                                        and k not in functions2apply.keys()}
                     names = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by,
-                                            specified_vars.keys()).difference(
-                        functions2apply.keys()).union(
-                        functions2apply_var_needs)
-                    dm = dmfilter(data_manager, names, **specified_vars)  # filter first by specified_vars
+                                            specified_vars.keys()).difference(functions2apply.keys())
+                    dm = dmfilter(data_manager, names.union(functions2apply_var_needs),
+                                  **specified_vars)  # filter first by specified_vars
                     dm = apply(dm, names=names, **functions2apply)  # now apply the functions
                     vars4plot.update(functions2apply.keys())
                     names4plot = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by)
@@ -192,7 +195,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                     if create_preimage_data:
                         if preimage_format == JOBLIB:
                             joblib.dump((dm, vars4plot, names4plot, specified_vars, extra_arguments),
-                                        path2rplot_data)
+                                        get_path_name2replot_data(data_manager, plot_function, name, preimage_format))
                         else:
                             raise Exception("Not implemented yet.")
 
