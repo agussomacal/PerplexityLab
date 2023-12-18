@@ -116,10 +116,10 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            xticks=None, yticks=None,
                            font_family="amssymb",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
-                           ylabel=None, **kwargs):
+                           ylabel=None, usetex=True, **kwargs):
             format = format if format[0] == "." else "." + format
             plt.rcParams.update({
-                "text.usetex": True,
+                "text.usetex": usetex,
                 "font.family": font_family,
             })
 
