@@ -85,7 +85,8 @@ class TestVizUtils(unittest.TestCase):
                      )
         assert len(paths) == 0
         assert os.path.exists(get_path_name2replot_data(self.data_manager, plot, "nonexistentplot", JOBLIB))
-        assert not os.path.exists(get_path_name2replot_data(self.data_manager, plot, "nonexistentplot", JOBLIB).replace("data2replot_", ""))
+        assert not os.path.exists(
+            get_path_name2replot_data(self.data_manager, plot, "nonexistentplot", JOBLIB).replace("data2replot_", ""))
 
     def test_one_line_iterator(self):
         @perplex_plot()
@@ -116,6 +117,17 @@ class TestVizUtils(unittest.TestCase):
         paths = generic_plot(self.data_manager, name="sort_test", x="x", y="z", label="preprocessing",
                              plot_func=sns.lineplot,
                              z=lambda x, y: y / x, axes_by=["k"], sort_by=["z"]
+                             )
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+
+    def test_plot_versus_label_outside(self):
+        paths = generic_plot(self.data_manager, name="label_outside", x="x", y="z", label="preprocessing",
+                             plot_func=sns.lineplot,
+                             z=lambda x, y: y / x, axes_by=["k"], sort_by=["z"],
+                             axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 30},
+                             legend_font_dict={'weight': 'normal', "size": 30, 'stretch': 'normal'},
+                             legend_outside=True, legend_loc="lower center"
                              )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])

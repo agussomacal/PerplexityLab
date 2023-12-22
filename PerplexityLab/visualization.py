@@ -21,6 +21,9 @@ from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4savi
 INCHES_PER_LETTER = 0.11
 INCHES_PER_LABEL = 0.3
 LEGEND_EXTRA_PERCENTAGE_SPACE = 0.1
+DEFAULT_X_AXIS_SIZE = 4
+DEFAULT_Y_AXIS_SIZE = 4
+DEFAULT_FONT_SIZE = 18
 
 
 def plot_test(plot_function):
@@ -94,6 +97,99 @@ def get_path_name2replot_data(data_manager, plot_function, name, preimage_format
             f"data2replot_{(name if name is not None else plot_function.__name__)}.{preimage_format}")
 
 
+def get_remove_legend(ax, legend_text, legend_handles, legend_outside=False):
+    if legend_outside:
+        # not plot here the legend. seaborn do it automatically so remove it.
+        try:
+            ax.legend_.remove()
+        except AttributeError:
+            pass
+
+        legend_text += ax.get_legend_handles_labels()[1]
+        legend_handles += ax.get_legend_handles_labels()[0]
+        return legend_text, legend_handles
+
+
+# def get_remove_title():
+#     tit = get_name_for_title(sub_statsdata, plot_axes_separator_categories + plot_axes_sort_categories)
+#     if isinstance(title, str):
+#         tit = title
+#     elif isinstance(title, list):
+#         tit = tit + '\n' + '\n'.join(title)
+#
+#     ax.set_title(tit)
+#
+#     title_len = max(map(len, ax.get_title().split('\n')))
+#     title_lines = len(ax.get_title().split('\n'))
+#     title_max_len = title_len if title_len > title_max_len else title_max_len
+#     title_max_lines = title_lines if title_lines > title_max_lines else title_max_lines
+
+
+def plot_legend(fig, axes, legend_text, legend_handles, axes_xy_proportions, legend_font_dict, legend_loc=None,
+                legend_outside=False):
+    if legend_outside:
+        font_x_proportion = axes_xy_proportions[0] / DEFAULT_X_AXIS_SIZE
+        font_y_proportion = axes_xy_proportions[1] / DEFAULT_Y_AXIS_SIZE * (
+            legend_font_dict["size"] if "size" in legend_font_dict.keys() else DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE
+        # set_style(style)
+
+        title_max_len = 0
+        title_max_lines = 1
+
+        # assert len(set([len(get_sub_ax(axes, i).get_legend_handles_labels()[1]) for i in range(np.prod(axes.shape))])) == 1, 'Yet not implemented support for many axes with different labels in each. The resulting plots otherwise mix the colors.'
+        # if title:
+        #     suptitle = get_name_for_title(statsdata, plot_separator_categories)
+        #     plt.suptitle(suptitle)
+        #     suptitle_lines = len(suptitle.split('\n'))
+        # else:
+        #     suptitle_lines = 0
+        suptitle_lines = 0
+
+        # title_max_lines += 1  # for the xlabel
+        inches_per_letter = INCHES_PER_LETTER * font_x_proportion
+        legend_extra_percentage_space = LEGEND_EXTRA_PERCENTAGE_SPACE * font_y_proportion
+        inches_per_label = INCHES_PER_LABEL * font_y_proportion
+
+        x, y = np.array(fig.bbox.bounds[-2:]) / fig.dpi  # fig.bbox.bounds[-2:]#rcParams['figure.figsize']
+        if (5 + title_max_len) * inches_per_letter * axes.shape[1] >= x * (1 - legend_extra_percentage_space):
+            x = (5 + title_max_len) * inches_per_letter * axes.shape[1] * (1 + legend_extra_percentage_space)
+        # extend y size to put suptitle and each axes title
+        y = y + (suptitle_lines + title_max_lines * axes.shape[0]) * inches_per_label
+
+        num_legend_text = len(set(legend_text))
+
+        if num_legend_text > 0:
+            legend_max_len = max(map(len, legend_text))
+            if legend_max_len * inches_per_letter >= x * (1 - legend_extra_percentage_space):
+                x = (legend_max_len * (1 + legend_extra_percentage_space)) * inches_per_letter
+
+            num_legend_text += 2  # 3 if num_legend_text <= 8 else 0
+
+            # add y space for legend.
+            y = y + num_legend_text * inches_per_label  # + title_max_lines * inches_per_label * axes.shape[1]
+
+        fig.set_size_inches(x, y, forward=True)
+
+        plt.subplots_adjust(
+            top=1 - (suptitle_lines + title_max_lines) * inches_per_label / y,
+            hspace=title_max_lines * inches_per_label
+        )
+        if num_legend_text > 0:
+            plt.subplots_adjust(bottom=num_legend_text * inches_per_label / y)
+
+            final_legend_handlers = []
+            final_legend_text = []
+            for h, t in zip(legend_handles, legend_text):
+                if t not in final_legend_text:
+                    final_legend_handlers.append(h)
+                    final_legend_text.append(t)
+            fig.legend(final_legend_handlers, final_legend_text,
+                       bbox_to_anchor=(0.5, 0.1), loc='lower center' if legend_loc is None else legend_loc,
+                       fancybox=True, shadow=False, prop=legend_font_dict)
+        else:
+            fig.tight_layout()
+
+
 def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], group_by=[], sort_by_default=[],
                  legend=True):
     """
@@ -123,7 +219,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            font_family="amssymb",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
-                           only_create_preimage_data=False, **kwargs):
+                           only_create_preimage_data=False, legend_outside=False, legend_loc=None, **kwargs):
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -235,10 +331,13 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                                     savefig=savefig,
                                                     return_fig=True, axes_xy_proportions=axes_xy_proportions,
                                                     dpi=dpi) as fax:
+                                legend_text = []
+                                legend_handles = []
                                 fig, axes = fax
                                 for i, (data_of_ax, data2plot_in_ax) in enumerate(data2plot_per_plot):
                                     ax = get_sub_ax(axes, i)
-                                    ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]))
+                                    ax.set_title("".join(["{}: {}\n".format(k, v) for k, v in data_of_ax.items()]),
+                                                 fontdict=legend_font_dict)
                                     for selection, sub_data2plot_in_ax in group(data2plot_in_ax, names=names4plot,
                                                                                 by=group_by, sort_by=sort_by):
                                         plot_function(fig=fig, ax=ax,
@@ -248,6 +347,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                                       **extra_arguments)
                                     if add_legend:
                                         ax.legend(prop=legend_font_dict)
+                                        get_remove_legend(ax, legend_text, legend_handles,
+                                                          legend_outside=legend_outside)
                                     if xlabel is not None:
                                         ax.set_xlabel(xlabel, fontdict=axis_font_dict)
                                     if ylabel is not None:
@@ -263,7 +364,10 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                         ax.tick_params(
                                             labelsize=axis_font_dict[
                                                 "size"] if "size" in axis_font_dict.keys() else None)
-                                plt.tight_layout()
+                                plot_legend(fig, axes, legend_text, legend_handles, axes_xy_proportions,
+                                            legend_loc=legend_loc,
+                                            legend_outside=legend_outside, legend_font_dict=legend_font_dict)
+                                # plt.tight_layout()
                                 return plot_name
 
                     plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
