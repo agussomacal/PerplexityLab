@@ -125,13 +125,20 @@ def get_remove_legend(ax, legend_text, legend_handles, legend_outside=False):
 #     title_max_lines = title_lines if title_lines > title_max_lines else title_max_lines
 
 
-def plot_legend(fig, axes, legend_text, legend_handles, axes_xy_proportions, legend_font_dict, legend_loc=None,
-                legend_outside=False):
+def plot_legend(fig, axes, legend_text, legend_handles, axes_xy_proportions, legend_font_dict, axis_font_dict,
+                legend_loc=None, legend_outside=False):
     if legend_outside:
         font_x_proportion = axes_xy_proportions[0] / DEFAULT_X_AXIS_SIZE
         font_y_proportion = axes_xy_proportions[1] / DEFAULT_Y_AXIS_SIZE * (
             legend_font_dict["size"] if "size" in legend_font_dict.keys() else DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE
+        font_y_proportion_ticks = axes_xy_proportions[1] / DEFAULT_Y_AXIS_SIZE * (
+            legend_font_dict["size"] if "size" in axis_font_dict.keys() else DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE
         # set_style(style)
+        # title_max_lines += 1  # for the xlabel
+        inches_per_letter = INCHES_PER_LETTER * font_x_proportion
+        legend_extra_percentage_space = LEGEND_EXTRA_PERCENTAGE_SPACE * font_y_proportion
+        inches_per_label = INCHES_PER_LABEL * font_y_proportion
+        inches_per_tick = INCHES_PER_LABEL * font_y_proportion_ticks
 
         title_max_len = 0
         title_max_lines = 1
@@ -145,38 +152,39 @@ def plot_legend(fig, axes, legend_text, legend_handles, axes_xy_proportions, leg
         #     suptitle_lines = 0
         suptitle_lines = 0
 
-        # title_max_lines += 1  # for the xlabel
-        inches_per_letter = INCHES_PER_LETTER * font_x_proportion
-        legend_extra_percentage_space = LEGEND_EXTRA_PERCENTAGE_SPACE * font_y_proportion
-        inches_per_label = INCHES_PER_LABEL * font_y_proportion
-
         x, y = np.array(fig.bbox.bounds[-2:]) / fig.dpi  # fig.bbox.bounds[-2:]#rcParams['figure.figsize']
         if (5 + title_max_len) * inches_per_letter * axes.shape[1] >= x * (1 - legend_extra_percentage_space):
             x = (5 + title_max_len) * inches_per_letter * axes.shape[1] * (1 + legend_extra_percentage_space)
         # extend y size to put suptitle and each axes title
-        y = y + (suptitle_lines + title_max_lines * axes.shape[0]) * inches_per_label
+        y_for_title = (suptitle_lines + title_max_lines * axes.shape[0]) * inches_per_label
+        y_for_suptitle = suptitle_lines * inches_per_label
 
+        # calculate how many extra lines to be added for legend
         num_legend_text = len(set(legend_text))
+        y_for_legend = num_legend_text * inches_per_label
+        # if num_legend_text > 0:
+        #     legend_max_len = max(map(len, legend_text))
+        #     if legend_max_len * inches_per_letter >= x * (1 - legend_extra_percentage_space):
+        #         x = (legend_max_len * (1 + legend_extra_percentage_space)) * inches_per_letter
+        #
+        #     num_legend_text += 2  # 3 if num_legend_text <= 8 else 0
+        #
+        #     # add y space for legend.
+        #     y = y + num_legend_text * inches_per_label  # + title_max_lines * inches_per_label * axes.shape[1]
 
-        if num_legend_text > 0:
-            legend_max_len = max(map(len, legend_text))
-            if legend_max_len * inches_per_letter >= x * (1 - legend_extra_percentage_space):
-                x = (legend_max_len * (1 + legend_extra_percentage_space)) * inches_per_letter
-
-            num_legend_text += 2  # 3 if num_legend_text <= 8 else 0
-
-            # add y space for legend.
-            y = y + num_legend_text * inches_per_label  # + title_max_lines * inches_per_label * axes.shape[1]
-
+        y += y_for_suptitle + y_for_title + y_for_legend + inches_per_tick
         fig.set_size_inches(x, y, forward=True)
 
         plt.subplots_adjust(
-            top=1 - (suptitle_lines + title_max_lines) * inches_per_label / y,
-            hspace=title_max_lines * inches_per_label
+            top=1 - (y_for_suptitle + 2*y_for_title) / y,
+            bottom=(y_for_legend + inches_per_tick) / y,
+            # left=,
+            # hspace=title_max_lines * inches_per_label
         )
         if num_legend_text > 0:
-            plt.subplots_adjust(bottom=num_legend_text * inches_per_label / y)
+            # plt.subplots_adjust(bottom=num_legend_text * inches_per_label / y)
 
+            # get unique legend text/handlers.
             final_legend_handlers = []
             final_legend_text = []
             for h, t in zip(legend_handles, legend_text):
@@ -184,7 +192,8 @@ def plot_legend(fig, axes, legend_text, legend_handles, axes_xy_proportions, leg
                     final_legend_handlers.append(h)
                     final_legend_text.append(t)
             fig.legend(final_legend_handlers, final_legend_text,
-                       bbox_to_anchor=(0.5, 0.1), loc='lower center' if legend_loc is None else legend_loc,
+                       # bbox_to_anchor=(0.5, 0.1),
+                       loc='lower center' if legend_loc is None else legend_loc,
                        fancybox=True, shadow=False, prop=legend_font_dict)
         else:
             fig.tight_layout()
@@ -366,7 +375,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                                 "size"] if "size" in axis_font_dict.keys() else None)
                                 plot_legend(fig, axes, legend_text, legend_handles, axes_xy_proportions,
                                             legend_loc=legend_loc,
-                                            legend_outside=legend_outside, legend_font_dict=legend_font_dict)
+                                            legend_outside=legend_outside,
+                                            legend_font_dict=legend_font_dict, axis_font_dict=axis_font_dict)
                                 # plt.tight_layout()
                                 return plot_name
 

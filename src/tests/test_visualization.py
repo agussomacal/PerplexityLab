@@ -127,7 +127,8 @@ class TestVizUtils(unittest.TestCase):
                              z=lambda x, y: y / x, axes_by=["k"], sort_by=["z"],
                              axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 30},
                              legend_font_dict={'weight': 'normal', "size": 30, 'stretch': 'normal'},
-                             legend_outside=True, legend_loc="lower center"
+                             legend_outside=True, legend_loc="lower center",
+                             axes_xy_proportions=(8, 6),
                              )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
