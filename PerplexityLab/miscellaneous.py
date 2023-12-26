@@ -11,6 +11,7 @@ from typing import Callable, Dict
 
 import joblib
 import numpy as np
+import pandas as pd
 from pathos.multiprocessing import Pool, cpu_count
 
 
@@ -204,11 +205,12 @@ def make_hash(o):
         o = o2
 
     if isinstance(o, (set, tuple, list)):
-
         return hash(tuple([make_hash(e) for e in o]))
-
+    elif isinstance(o, pd.DataFrame):
+        return make_hash((o.values, o.columns.tolist(), o.index.tolist()))
+    elif isinstance(o, np.ndarray):
+        return make_hash(o.tolist())
     elif not isinstance(o, dict):
-
         return hash(o)
 
     new_o = copy.deepcopy(o)
@@ -234,6 +236,10 @@ def ifex_saver(data, filepath, saver, file_format):
 
 
 def ifex_loader(filepath, loader, file_format):
+    """
+    :param file_format: format for the termination of the file. If not known specify loader an saver. known ones are: npy, pickle, joblib
+    :param loader: function that knows how to load the file
+    """
     with timeit(f"Loading pre-processed {filepath}:"):
         if loader is not None:
             data = loader(filepath)
@@ -252,7 +258,7 @@ def ifex_loader(filepath, loader, file_format):
 def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, description=None, check_hash=False):
     """
     Decorator to manage loading and saving of files after a first processing execution.
-    :param file_format: format for the termination of the file. If not known specify loader an saver
+    :param file_format: format for the termination of the file. If not known specify loader an saver. known ones are: npy, pickle, joblib
     :param loader: function that knows how to load the file
     :param saver: function that knows how to save the file
     :param description: description of data as a function depending on the type of data.

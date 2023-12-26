@@ -3,6 +3,9 @@ import pickle
 import unittest
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 from PerplexityLab.miscellaneous import ClassPartialInit, if_exist_load_else_do
 
 
@@ -103,6 +106,26 @@ class TestVizUtils(unittest.TestCase):
         # change input but check_hash = False
         res = do_something(path=self.path, filename=None, recalculate=False, a=1, b=5)
         assert res == 6
+
+    def test_if_exist_load_else_do_hash_DataFrame(self):
+        @if_exist_load_else_do(file_format="joblib", loader=None, saver=None,
+                               description=lambda data: print(data), check_hash=True)
+        def do_something_df(a, b):
+            return a + b
+
+        # data frame
+        res = do_something_df(path=self.path, filename=None,
+                              a=pd.DataFrame([[2, 3]], columns=["a", "b"]),
+                              b=pd.DataFrame([[2, 3]], columns=["a", "b"]))
+        assert np.allclose(res.values, [[4, 6]])
+        res = do_something_df(path=self.path, filename=None,
+                              a=pd.DataFrame([[2, 3]], columns=["a", "b"]),
+                              b=pd.DataFrame([[2, 7]], columns=["a", "b"]))
+        assert np.allclose(res.values, [[4, 10]])
+        res = do_something_df(path=self.path, filename=None,
+                              a=pd.DataFrame([[2, 3]], columns=["a", "b"]),
+                              b=pd.DataFrame([[2, 7]], columns=["a", "b"]))
+        assert np.allclose(res.values, [[4, 10]])
 
     if __name__ == '__main__':
         unittest.main()
