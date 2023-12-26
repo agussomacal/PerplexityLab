@@ -70,7 +70,7 @@ class DefaultOrderedDict(OrderedDict):
     # Source: https://stackoverflow.com/questions/6190331/how-to-implement-an-ordered-default-dict
     def __init__(self, default_factory=None, *a, **kw):
         if (default_factory is not None and
-           not isinstance(default_factory, Callable)):
+                not isinstance(default_factory, Callable)):
             raise TypeError('first argument must be callable')
         OrderedDict.__init__(self, *a, **kw)
         self.default_factory = default_factory
@@ -108,6 +108,7 @@ class DefaultOrderedDict(OrderedDict):
     def __repr__(self):
         return 'OrderedDefaultDict(%s, %s)' % (self.default_factory,
                                                OrderedDict.__repr__(self))
+
 
 def filter_dict(keys, kwargs: Dict):
     """
@@ -173,7 +174,82 @@ def clean_str4saving(s):
         ".", "").replace(";", "").replace(":", "").replace(" ", "_")
 
 
-def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, description=None):
+import copy
+
+DictProxyType = type(object.__dict__)
+
+
+def make_hash(o):
+    """
+    Thanks to: https://stackoverflow.com/questions/5884066/hashing-a-dictionary
+
+    Makes a hash from a dictionary, list, tuple or set to any level, that
+    contains only other hashable types (including any lists, tuples, sets, and
+    dictionaries). In the case where other kinds of objects (like classes) need
+    to be hashed, pass in a collection of object attributes that are pertinent.
+    For example, a class can be hashed in this fashion:
+
+      make_hash([cls.__dict__, cls.__name__])
+
+    A function can be hashed like so:
+
+      make_hash([fn.__dict__, fn.__code__])
+    """
+
+    if type(o) == DictProxyType:
+        o2 = {}
+        for k, v in o.items():
+            if not k.startswith("__"):
+                o2[k] = v
+        o = o2
+
+    if isinstance(o, (set, tuple, list)):
+
+        return hash(tuple([make_hash(e) for e in o]))
+
+    elif not isinstance(o, dict):
+
+        return hash(o)
+
+    new_o = copy.deepcopy(o)
+    for k, v in new_o.items():
+        new_o[k] = make_hash(v)
+
+    return hash(tuple(frozenset(sorted(new_o.items()))))
+
+
+def ifex_saver(data, filepath, saver, file_format):
+    with timeit(f"Saving processed {filepath}:"):
+        if saver is not None:
+            saver(data, filepath)
+        elif "npy" in file_format:
+            np.save(filepath, data)
+        elif "pickle" in file_format:
+            with open(filepath, "r") as f:
+                pickle.dump(data, f)
+        elif "joblib" in file_format:
+            joblib.dump(data, filepath)
+        else:
+            raise Exception(f"Format {file_format} not implemented.")
+
+
+def ifex_loader(filepath, loader, file_format):
+    with timeit(f"Loading pre-processed {filepath}:"):
+        if loader is not None:
+            data = loader(filepath)
+        elif "npy" == file_format:
+            data = np.load(filepath)
+        elif "pickle" == file_format:
+            with open(filepath, "r") as f:
+                data = pickle.load(f)
+        elif "joblib" == file_format:
+            data = joblib.load(filepath)
+        else:
+            raise Exception(f"Format {file_format} not implemented.")
+        return data
+
+
+def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, description=None, check_hash=False):
     """
     Decorator to manage loading and saving of files after a first processing execution.
     :param file_format: format for the termination of the file. If not known specify loader an saver
@@ -185,48 +261,43 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
     :path to specify path to folder
     :filename=None to specify filename
     :recalculate=False to force recomputation.
+    :check_hash=False to recalculate if inputs to function change with respect of saved data
     """
 
     def decorator(do_func):
         def decorated_func(path, filename=None, recalculate=False, *args, **kwargs):
-            filepath = Path(path)
-            filepath.mkdir(parents=True, exist_ok=True)
+            path = Path(path)
+            path.mkdir(parents=True, exist_ok=True)
             filename = do_func.__name__ if filename is None else filename
             # if args4name == "all":
             #     args4name = sorted(kwargs.keys())
             # filename = f"{filename}" + "_".join(f"{arg_name}{kwargs[arg_name]}" for arg_name in args4name)
             filename = clean_str4saving(filename)
-            filepath = f"{filepath}/{filename}.{file_format}"
-            if recalculate or not os.path.exists(filepath):
+            filepath = f"{path}/{filename}.{file_format}"
+            filepath_hash = f"{path}/{filename}.hash"
+
+            # get hash of old and new file
+            hash_of_input_old = None
+            if os.path.exists(filepath_hash):
+                with open(filepath_hash, "r") as f:
+                    hash_of_input_old = int(f.readline())
+            hash_of_input = make_hash((args, kwargs))
+
+            # process save or load
+            if recalculate or not os.path.exists(filepath) or (check_hash and hash_of_input != hash_of_input_old):
+                # Processing
                 with timeit(f"Processing {filepath}:"):
-                    # Projet points into graph edges
                     data = do_func(*args, **kwargs)
 
-                    if saver is not None:
-                        saver(data, filepath)
-                    elif "npy" in file_format:
-                        np.save(filepath, data)
-                    elif "pickle" in file_format:
-                        with open(filepath, "r") as f:
-                            pickle.dump(data, f)
-                    elif "joblib" in file_format:
-                        joblib.dump(data, filepath)
-                    else:
-                        raise Exception(f"Format {file_format} not implemented.")
+                # Saving data and hash
+                ifex_saver(data, filepath=filepath, saver=saver, file_format=file_format)
+                with open(filepath_hash, "w") as f:
+                    f.writelines(str(hash_of_input))
             else:
-                with timeit(f"Loading pre-processed {filepath}:"):
+                # loading data
+                data = ifex_loader(filepath=filepath, loader=loader, file_format=file_format)
 
-                    if loader is not None:
-                        data = loader(filepath)
-                    elif "npy" == file_format:
-                        data = np.load(filepath)
-                    elif "pickle" == file_format:
-                        with open(filepath, "r") as f:
-                            data = pickle.load(f)
-                    elif "joblib" == file_format:
-                        data = joblib.load(filepath)
-                    else:
-                        raise Exception(f"Format {file_format} not implemented.")
+            # do post processing
             if isinstance(description, Callable):
                 description(data)
             return data
