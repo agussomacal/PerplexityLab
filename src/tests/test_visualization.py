@@ -9,7 +9,7 @@ import seaborn as sns
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot, one_line_iterator, \
-    get_path_name2replot_data
+    get_path_name2replot_data, LegendOutsidePlot
 
 
 class TestVizUtils(unittest.TestCase):
@@ -125,10 +125,16 @@ class TestVizUtils(unittest.TestCase):
         paths = generic_plot(self.data_manager, name="label_outside", x="x", y="z", label="preprocessing",
                              plot_func=sns.lineplot,
                              z=lambda x, y: y / x, axes_by=["k"], sort_by=["z"],
-                             axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                             axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 18},
                              legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'},
-                             legend_outside=True, legend_loc="lower center", title=True,
-                             axes_xy_proportions=(8, 6), inches_height=0.45,
+                             labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                             xlabel="x", ylabel="y",
+                             # legend_outside=True, legend_loc="lower center", title=True,
+                             axes_xy_proportions=(8, 6),
+                             # inches_height=0.45,
+                             legend_outside_plot=LegendOutsidePlot(loc="lower center",
+                                                                   extra_y_top=0.1, extra_y_bottom=0.2,
+                                                                   extra_x_left=0.075, extra_x_right=0.075)
                              )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
