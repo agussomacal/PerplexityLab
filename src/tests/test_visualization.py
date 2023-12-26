@@ -125,10 +125,10 @@ class TestVizUtils(unittest.TestCase):
         paths = generic_plot(self.data_manager, name="label_outside", x="x", y="z", label="preprocessing",
                              plot_func=sns.lineplot,
                              z=lambda x, y: y / x, axes_by=["k"], sort_by=["z"],
-                             axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 30},
-                             legend_font_dict={'weight': 'normal', "size": 30, 'stretch': 'normal'},
-                             legend_outside=True, legend_loc="lower center",
-                             axes_xy_proportions=(8, 6),
+                             axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                             legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'},
+                             legend_outside=True, legend_loc="lower center", title=True,
+                             axes_xy_proportions=(8, 6), inches_height=0.45,
                              )
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])

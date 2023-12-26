@@ -13,6 +13,8 @@ import joblib
 import numpy as np
 import pandas as pd
 from pathos.multiprocessing import Pool, cpu_count
+from scipy.sparse import csr_array, bsr_array, coo_array, csc_array, dia_array, dok_array, lil_array, bsr_matrix, \
+    coo_matrix, csc_matrix, csr_matrix, dia_matrix, dok_matrix, lil_matrix
 
 
 # ----------- time -----------
@@ -210,6 +212,10 @@ def make_hash(o):
         return make_hash((o.values, o.columns.tolist(), o.index.tolist()))
     elif isinstance(o, np.ndarray):
         return make_hash(o.tolist())
+    elif isinstance(o, (
+    csr_array, bsr_array, coo_array, csc_array, dia_array, dok_array, lil_array, bsr_matrix, coo_matrix, csc_matrix,
+    csr_matrix, dia_matrix, dok_matrix, lil_matrix)):
+        return make_hash((o.nonzero(), o.data))
     elif not isinstance(o, dict):
         return hash(o)
 
