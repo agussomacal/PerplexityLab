@@ -2,6 +2,7 @@ import os
 import subprocess
 from datetime import date
 from pathlib import Path
+from typing import Union
 
 import pandas as pd
 
@@ -199,3 +200,33 @@ class Code2LatexConnector:
         os.chdir(self.latex_path)
         subprocess.run(["pdflatex", "{}".format(self.latex_file)])
         os.chdir(cwd)
+
+
+# ---------- paper utils ---------- #
+def identify_unused_references_in_latex(path2file: Union[str, Path], new_file_name=None):
+    labels = set()
+    refs = set()
+    with open(path2file, "r") as f:
+        for line in f:
+            s = line.split("label{")
+            if len(s) > 1:
+                labels.add(s[1].split("}")[0])
+
+            s = line.split("ref{")
+            if len(s) > 1:
+                for fragment in s[1:]:
+                    refs.add(fragment.split("}")[0])
+
+    print(f"All labels in {path2file}: {len(labels)}: ", labels)
+    print(f"All refs in {path2file}: {len(refs)}: ", refs)
+    print("Unused labels: ", len(labels.difference(refs)), labels.difference(refs))
+
+    if new_file_name is not None:
+        with open(path2file, "r") as f:
+            text = f.read()
+            for label in labels.difference(refs):
+                text = text.replace(f"\label{{{label}}}\n", "")
+                text = text.replace(f"\label{{{label}}}", "")
+
+        with open(Path(path2file).parent.joinpath(new_file_name), "w") as f:
+            f.write(text)
