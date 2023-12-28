@@ -85,8 +85,7 @@ class DataManager:
         self.country_alpha_code = country_alpha_code
         self.trackCO2 = trackCO2
 
-    @property
-    def columns(self):
+    def keys(self):
         return set(self.parameters.keys()).union(self.variables.keys()).union(self.function_blocks.keys())
 
     def get_variable(self, input_params, input_funcs, variable):
@@ -192,7 +191,7 @@ class DataManager:
                             result_dict[k].append(v)
             return result_dict
         elif item == ALL:
-            return self.__getitem__(self.columns)
+            return self.__getitem__(self.keys())
         elif isinstance(item, str):
             # one only item gives the list directly instead of the dictionary, for that should be given in list form
             # for example ["name"]
@@ -330,7 +329,8 @@ def get_sub_dataset(datamanager: Union[DataManager, Dict[str, List]], names: Uni
     return sub_dataset
 
 
-def dmfilter(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set], **kwargs: List):
+def dmfilter(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, Set] = None, **kwargs: List):
+    names = names if names is not None else datamanager.keys()
     sub_dataset = get_sub_dataset(datamanager, names=set(names).union(kwargs.keys()))
     length = len(list(sub_dataset.values())[0])
     accepted_indexes = [i for i in range(length) if
@@ -382,7 +382,7 @@ def group(datamanager: Union[DataManager, Dict[str, List]], names: Union[List, S
     :return: grouped_vars dictionary, subset of the dataset with one of the available grouped_vars
     """
     sort_by = [] if sort_by is None else sort_by
-    names = datamanager.columns if names is None else names
+    names = datamanager.keys() if names is None else names
     by = [] if names is None else by
 
     assert isinstance(by, (set, list)), f"by should be a list or set of names even if it is only one."

@@ -17,6 +17,19 @@ from scipy.sparse import csr_array, bsr_array, coo_array, csc_array, dia_array, 
     coo_matrix, csc_matrix, csr_matrix, dia_matrix, dok_matrix, lil_matrix
 
 
+# ----------- functions -----------
+def get_default_args(func):
+    """
+    Get default arguments of function.
+    """
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+
+
 # ----------- time -----------
 @contextmanager
 def timeit(msg):
@@ -213,8 +226,9 @@ def make_hash(o):
     elif isinstance(o, np.ndarray):
         return make_hash(o.tolist())
     elif isinstance(o, (
-    csr_array, bsr_array, coo_array, csc_array, dia_array, dok_array, lil_array, bsr_matrix, coo_matrix, csc_matrix,
-    csr_matrix, dia_matrix, dok_matrix, lil_matrix)):
+            csr_array, bsr_array, coo_array, csc_array, dia_array, dok_array, lil_array, bsr_matrix, coo_matrix,
+            csc_matrix,
+            csr_matrix, dia_matrix, dok_matrix, lil_matrix)):
         return make_hash((o.nonzero(), o.data))
     elif not isinstance(o, dict):
         return hash(o)

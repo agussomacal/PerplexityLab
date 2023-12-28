@@ -17,7 +17,7 @@ import seaborn as sns
 from makefun import with_signature, wraps
 
 from PerplexityLab.DataManager import DataManager, group, apply, dmfilter, JOBLIB
-from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving, filter_dict
+from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving, filter_dict, get_default_args
 
 INCHES_PER_LETTER = 0.11
 INCHES_HEIGHT = 0.2
@@ -47,10 +47,10 @@ def plot_test(plot_function):
 def make_data_frames(data_manager: DataManager, var_names=[], group_by=[], **kwargs):
     var_names = set(var_names)
     group_by = set(group_by)
-    specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if k in data_manager.columns}
+    specified_vars = {k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if k in data_manager.keys()}
     functions2apply = {k: v for k, v in kwargs.items() if
                        k in var_names | group_by and k not in specified_vars.keys() and isinstance(v, Callable)
-                       and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)}
+                       and set(inspect.getfullargspec(v).args).issubset(data_manager.keys())}
 
     dm = apply(data_manager,
                names=set(var_names).union(specified_vars.keys(), group_by).difference(functions2apply.keys()),
@@ -111,20 +111,6 @@ def get_remove_legend(ax, legend_text, legend_handles, legend_outside_plot):
         return legend_text, legend_handles
 
 
-# def get_remove_title():
-#     tit = get_name_for_title(sub_statsdata, plot_axes_separator_categories + plot_axes_sort_categories)
-#     if isinstance(title, str):
-#         tit = title
-#     elif isinstance(title, list):
-#         tit = tit + '\n' + '\n'.join(title)
-#
-#     ax.set_title(tit)
-#
-#     title_len = max(map(len, ax.get_title().split('\n')))
-#     title_lines = len(ax.get_title().split('\n'))
-#     title_max_len = title_len if title_len > title_max_len else title_max_len
-#     title_max_lines = title_lines if title_lines > title_max_lines else title_max_lines
-
 LegendOutsidePlot = namedtuple("LegendOutsidePlot",
                                "loc extra_x_left extra_x_right extra_y_top extra_y_bottom",
                                defaults=["lower center", 0, 0, 0, 0.1])
@@ -148,8 +134,6 @@ def plot_legend(fig, legend_text, legend_handles, legend_font_dict, legend_outsi
         )
 
         if num_legend_text > 0:
-            # plt.subplots_adjust(bottom=num_legend_text * inches_per_label / y)
-
             # get unique legend text/handlers.
             final_legend_handlers = []
             final_legend_text = []
@@ -196,9 +180,8 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            font_family="amssymb", title=True,
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
-                           only_create_preimage_data=False, legend_outside=False, legend_loc=None,
-                           legend_outside_plot=None,
-                           inches_height=INCHES_HEIGHT, **kwargs):
+                           only_create_preimage_data=False, use_preimage_data=False,
+                           legend_outside_plot=None, **kwargs):
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -232,30 +215,40 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                     function_arg_names)) == 2, "fig and ax should be two varaibles of ploting " \
                                                "function but they were not found: {}".format(function_arg_names)
 
-                if create_preimage_data and os.path.exists(
+                if use_preimage_data and os.path.exists(
                         get_path_name2replot_data(data_manager, plot_function, name, preimage_format)):
                     if preimage_format == JOBLIB:
                         dm, vars4plot, names4plot, specified_vars, extra_arguments = \
                             joblib.load(get_path_name2replot_data(data_manager, plot_function, name, preimage_format))
+                        # TODO: if further filtering is done
+                        # specified_vars = {
+                        #     k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
+                        #     k in dm.keys()
+                        # }
+                        # # specified_vars = old_specified_vars
+                        # specified_vars = {
+                        #     k: set(v).intersection(specified_vars[k]) if k in specified_vars else v
+                        #     for k, v in old_specified_vars.items()}
+                        # dm = dmfilter(dm, **specified_vars)  # filter first by specified_vars
                     else:
                         raise Exception("Not implemented yet.")
                 else:
-                    vars4plot = set(function_arg_names).intersection(data_manager.columns)
+                    vars4plot = set(function_arg_names).intersection(data_manager.keys())
                     specified_vars = {
                         k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
-                        k in data_manager.columns
+                        k in data_manager.keys()
                     }
                     functions2apply = {
                         k: v for k, v in kwargs.items() if
                         k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
                         and k not in specified_vars.keys() and isinstance(v, Callable)
-                        and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
+                        and set(inspect.getfullargspec(v).args).issubset(data_manager.keys())
                     }
                     functions2apply_var_needs = set(itertools.chain(*[
                         inspect.getfullargspec(v).args for k, v in kwargs.items() if
                         k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
                         and k not in specified_vars.keys() and isinstance(v, Callable)
-                        and set(inspect.getfullargspec(v).args).issubset(data_manager.columns)
+                        and set(inspect.getfullargspec(v).args).issubset(data_manager.keys())
                     ]))
                     extra_arguments = {k: v for k, v in kwargs.items() if
                                        k in function_arg_names and k not in specified_vars.keys()
@@ -378,7 +371,11 @@ def unfold(dict_of_lists):
 
 def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, plot_func: Callable = sns.lineplot,
                  other_plot_funcs=(), log: str = "", sort_by=[], ylim=None, xlim=None, **kwargs):
-    # TODO: a way to agregate data instead of splitting depending if sns or plt
+    # TODO: get the default arguments of the final plot without this dummy intermediate step.
+    full_kwargs = get_default_args(perplex_plot()(lambda fig, ax: ax))
+    full_kwargs.update(kwargs)
+    kwargs = full_kwargs.copy()
+
     @perplex_plot()
     @with_signature(
         f"plot_{plot_func.__name__}_{y}_vs_{x}_by_{label}(fig, ax, {', '.join({x, y, label}.union(sort_by).difference([None]))})")
@@ -398,9 +395,9 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
             dict4plot[var] = vars4plot[var]
 
         data = pd.DataFrame.from_dict(unfold(dict4plot))
-        # data = pd.DataFrame.from_dict(unfold(dict4plot))
         data = data.sort_values(by=sort_by + ([label] if label is not None else []) + [x]).reset_index(
             drop=True)
+
         # ax.set(xlabel=x, ylabel=y, fontdict=kwargs["axis_font_dict"])
         ax.set_xlabel(x, fontdict=kwargs["labels_font_dict"])
         ax.set_ylabel(y, fontdict=kwargs["labels_font_dict"])
