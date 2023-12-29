@@ -264,7 +264,7 @@ def ifex_loader(filepath, loader, file_format):
         if loader is not None:
             data = loader(filepath)
         elif "npy" == file_format:
-            data = np.load(filepath)
+            data = np.load(filepath, allow_pickle=True)
         elif "pickle" == file_format:
             with open(filepath, "r") as f:
                 data = pickle.load(f)
@@ -303,22 +303,27 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
             filepath_hash = f"{path}/{filename}.hash"
 
             # get hash of old and new file
-            hash_of_input_old = None
-            if os.path.exists(filepath_hash):
-                with open(filepath_hash, "r") as f:
-                    hash_of_input_old = int(f.readline())
-            hash_of_input = make_hash((args, kwargs))
+            if check_hash:
+                hash_of_input_old = None
+                if os.path.exists(filepath_hash):
+                    with open(filepath_hash, "r") as f:
+                        hash_of_input_old = int(f.readline())
+                hash_of_input = make_hash((args, kwargs))
+                not_same_hash = (hash_of_input != hash_of_input_old)
+            else:
+                not_same_hash = True
 
             # process save or load
-            if recalculate or not os.path.exists(filepath) or (check_hash and hash_of_input != hash_of_input_old):
+            if recalculate or not os.path.exists(filepath) or (check_hash and not_same_hash):
                 # Processing
                 with timeit(f"Processing {filepath}:"):
                     data = do_func(*args, **kwargs)
 
                 # Saving data and hash
                 ifex_saver(data, filepath=filepath, saver=saver, file_format=file_format)
-                with open(filepath_hash, "w") as f:
-                    f.writelines(str(hash_of_input))
+                if check_hash:
+                    with open(filepath_hash, "w") as f:
+                        f.writelines(str(hash_of_input))
             else:
                 # loading data
                 data = ifex_loader(filepath=filepath, loader=loader, file_format=file_format)
