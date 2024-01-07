@@ -374,6 +374,7 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
     # TODO: get the default arguments of the final plot without this dummy intermediate step.
     full_kwargs = get_default_args(perplex_plot()(lambda fig, ax: ax))
     full_kwargs.update(kwargs)
+    full_kwargs.update({"xlim": xlim, "ylim": ylim})
     kwargs = full_kwargs.copy()
 
     @perplex_plot()

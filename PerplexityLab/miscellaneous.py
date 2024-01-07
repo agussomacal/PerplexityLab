@@ -133,8 +133,14 @@ def filter_dict(keys, kwargs: Dict):
     return OrderedDict([(k, kwargs[k]) for k in keys if k in kwargs])
 
 
+def filter_dict4func(function, **kwargs):
+    ins = inspect.getfullargspec(function)
+    return filter_dict(ins.args + ins.kwonlyargs, kwargs)
+    # return filter_dict(inspect.getfullargspec(function).args, kwargs)
+
+
 def partial_filter(function, **kwargs):
-    return partial(function, **filter_dict(inspect.getfullargspec(function).args, kwargs))
+    return partial(function, **filter_dict4func(function, **kwargs))
 
 
 class NamedPartial:
