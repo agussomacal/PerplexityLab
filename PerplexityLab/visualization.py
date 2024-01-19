@@ -182,7 +182,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
                            only_create_preimage_data=False, use_preimage_data=False,
-                           legend_outside_plot: LegendOutsidePlot=None, **kwargs):
+                           legend_outside_plot: LegendOutsidePlot = None, **kwargs):
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -240,17 +240,21 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                         k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
                         k in dm.keys()
                     }
+                    dm = dmfilter(dm, None, **specified_vars)  # filter first by specified_vars
+
                     functions2apply = {
                         k: v for k, v in kwargs.items() if isinstance(v, Callable)
                     }
+                    dm_needed_vars = set(itertools.chain(
+                        *[inspect.getfullargspec(f).args for f in functions2apply.values()])).intersection(dm.keys())
                     names = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by,
                                             specified_vars.keys()).difference(functions2apply.keys())
                     for function_name in sort_execution_tree(return_functions=False, **functions2apply):
                         f_args = inspect.getfullargspec(functions2apply[function_name]).args
                         if set(f_args).issubset(dm.keys()):
-                            names4func = names.union(f_args)
-                            dm = dmfilter(dm, names4func, **specified_vars)  # filter first by specified_vars
-                            dm = apply(dm, names=names, **{function_name: functions2apply[function_name]})  # now apply the functions
+                            names4func = names.union(f_args, dm_needed_vars)
+                            dm = apply(dm, names=names4func,
+                                       **{function_name: functions2apply[function_name]})  # now apply the functions
                             names.add(function_name)
                         else:
                             functions2apply.pop(function_name)
