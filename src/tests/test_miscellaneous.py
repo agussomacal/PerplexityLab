@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from PerplexityLab.miscellaneous import ClassPartialInit, if_exist_load_else_do
+from PerplexityLab.miscellaneous import ClassPartialInit, if_exist_load_else_do, sort_execution_tree
 
 
 class Foo1:
@@ -126,6 +126,17 @@ class TestVizUtils(unittest.TestCase):
                               a=pd.DataFrame([[2, 3]], columns=["a", "b"]),
                               b=pd.DataFrame([[2, 7]], columns=["a", "b"]))
         assert np.allclose(res.values, [[4, 10]])
+
+    def test_sort_execution_tree(self):
+        order = sort_execution_tree(
+            return_functions=False,
+            a=lambda x: x,
+            b=lambda x, y: x + y,
+            c=lambda e: e,
+            d=lambda a: a,
+            e=lambda d, b: d + b,
+            f=lambda b, c: b + c)
+        assert order == ["a", "b", "d", "e", "c", "f"]
 
     if __name__ == '__main__':
         unittest.main()

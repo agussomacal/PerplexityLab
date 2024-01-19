@@ -17,7 +17,8 @@ import seaborn as sns
 from makefun import with_signature, wraps
 
 from PerplexityLab.DataManager import DataManager, group, apply, dmfilter, JOBLIB
-from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving, filter_dict, get_default_args
+from PerplexityLab.miscellaneous import timeit, get_map_function, clean_str4saving, filter_dict, get_default_args, \
+    sort_execution_tree
 
 INCHES_PER_LETTER = 0.11
 INCHES_HEIGHT = 0.2
@@ -181,7 +182,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
                            only_create_preimage_data=False, use_preimage_data=False,
-                           legend_outside_plot=None, **kwargs):
+                           legend_outside_plot: LegendOutsidePlot=None, **kwargs):
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -233,34 +234,32 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                     else:
                         raise Exception("Not implemented yet.")
                 else:
-                    vars4plot = set(function_arg_names).intersection(data_manager.keys())
+                    dm = data_manager
+                    vars4plot = set(function_arg_names).intersection(dm.keys())
                     specified_vars = {
                         k: v if isinstance(v, list) else [v] for k, v in kwargs.items() if
-                        k in data_manager.keys()
+                        k in dm.keys()
                     }
                     functions2apply = {
-                        k: v for k, v in kwargs.items() if
-                        k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
-                        and k not in specified_vars.keys() and isinstance(v, Callable)
-                        and set(inspect.getfullargspec(v).args).issubset(data_manager.keys())
+                        k: v for k, v in kwargs.items() if isinstance(v, Callable)
                     }
-                    functions2apply_var_needs = set(itertools.chain(*[
-                        inspect.getfullargspec(v).args for k, v in kwargs.items() if
-                        k in function_arg_names + plot_by + axes_by + folder_by + group_by + sort_by
-                        and k not in specified_vars.keys() and isinstance(v, Callable)
-                        and set(inspect.getfullargspec(v).args).issubset(data_manager.keys())
-                    ]))
-                    extra_arguments = {k: v for k, v in kwargs.items() if
-                                       k in function_arg_names and k not in specified_vars.keys()
-                                       and k not in functions2apply.keys()}
                     names = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by,
                                             specified_vars.keys()).difference(functions2apply.keys())
-                    dm = dmfilter(data_manager, names.union(functions2apply_var_needs),
-                                  **specified_vars)  # filter first by specified_vars
-                    dm = apply(dm, names=names, **functions2apply)  # now apply the functions
+                    for function_name in sort_execution_tree(return_functions=False, **functions2apply):
+                        f_args = inspect.getfullargspec(functions2apply[function_name]).args
+                        if set(f_args).issubset(dm.keys()):
+                            names4func = names.union(f_args)
+                            dm = dmfilter(dm, names4func, **specified_vars)  # filter first by specified_vars
+                            dm = apply(dm, names=names, **{function_name: functions2apply[function_name]})  # now apply the functions
+                            names.add(function_name)
+                        else:
+                            functions2apply.pop(function_name)
                     vars4plot.update(functions2apply.keys())
                     names4plot = vars4plot.union(plot_by, axes_by, folder_by, group_by, sort_by)
 
+                    extra_arguments = {k: v for k, v in kwargs.items() if
+                                       k in function_arg_names and k not in specified_vars.keys()
+                                       and k not in functions2apply.keys()}
                     if create_preimage_data:
                         if preimage_format == JOBLIB:
                             joblib.dump((dm, vars4plot, names4plot, specified_vars, extra_arguments),

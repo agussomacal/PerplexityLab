@@ -178,6 +178,25 @@ def ClassPartialInit(class_type, class_name=None, **kwargs):
     return new_class
 
 
+def sort_execution_tree(return_functions=True, **functions: Callable):
+    execution_order = [f_name for f_name in functions.keys()]
+    for f_name, f in functions.items():
+        f_args = inspect.getfullargspec(f).args
+        for arg in f_args:
+            # if needs the output of a function
+            if arg in functions:
+                i_arg = execution_order.index(arg)
+                i_f = execution_order.index(f_name)
+                # if the order of execution is wrong invert
+                if i_arg > i_f:
+                    execution_order[i_arg], execution_order[i_f] = execution_order[i_f], execution_order[i_arg]
+
+    if return_functions:
+        return [functions[f_name] for f_name in execution_order]
+    else:
+        return execution_order
+
+
 # ---------- File utils ---------- #
 def copy_main_script_version(file, results_path):
     shutil.copyfile(os.path.realpath(file), f"{results_path}/main_script.py")
@@ -294,10 +313,11 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
     :filename=None to specify filename
     :recalculate=False to force recomputation.
     :check_hash=False to recalculate if inputs to function change with respect of saved data
+    :save=True to save
     """
 
     def decorator(do_func):
-        def decorated_func(path, filename=None, recalculate=False, *args, **kwargs):
+        def decorated_func(path, filename=None, recalculate=False, save=True, *args, **kwargs):
             path = Path(path)
             path.mkdir(parents=True, exist_ok=True)
             filename = do_func.__name__ if filename is None else filename
@@ -320,16 +340,17 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
                 not_same_hash = True
 
             # process save or load
-            if recalculate or not os.path.exists(filepath) or (check_hash and not_same_hash):
+            if not save or recalculate or not os.path.exists(filepath) or (check_hash and not_same_hash):
                 # Processing
                 with timeit(f"Processing {filepath}:"):
                     data = do_func(*args, **kwargs)
 
                 # Saving data and hash
-                ifex_saver(data, filepath=filepath, saver=saver, file_format=file_format)
-                if check_hash:
-                    with open(filepath_hash, "w") as f:
-                        f.writelines(str(hash_of_input))
+                if save:
+                    ifex_saver(data, filepath=filepath, saver=saver, file_format=file_format)
+                    if check_hash:
+                        with open(filepath_hash, "w") as f:
+                            f.writelines(str(hash_of_input))
             else:
                 # loading data
                 data = ifex_loader(filepath=filepath, loader=loader, file_format=file_format)

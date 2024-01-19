@@ -113,6 +113,14 @@ class TestVizUtils(unittest.TestCase):
         assert len(paths) == 1
         assert all([isinstance(path, str) for path in paths])
 
+    def test_plot_versus_execution_tree(self):
+        paths = generic_plot(self.data_manager, x="x", y="w", label="preprocessing", plot_func=sns.lineplot,
+                             z=lambda x, y: y / x,
+                             w=lambda z: z ** 2,
+                             axes_by=["k"])
+        assert len(paths) == 1
+        assert all([isinstance(path, str) for path in paths])
+
     def test_plot_versus_sort(self):
         paths = generic_plot(self.data_manager, name="sort_test", x="x", y="z", label="preprocessing",
                              plot_func=sns.lineplot,
