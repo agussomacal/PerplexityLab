@@ -32,11 +32,13 @@ def get_default_args(func):
 
 # ----------- time -----------
 @contextmanager
-def timeit(msg):
-    print(msg, end='')
+def timeit(msg, verbose=True):
+    if verbose:
+        print(msg, end='')
     t0 = time.time()
     yield
-    print('\r -> duracion {}: {:.2f}s'.format(msg, time.time() - t0))
+    if verbose:
+        print('\r -> duracion {}: {:.2f}s'.format(msg, time.time() - t0))
 
 
 def calculate_time(func: Callable):
@@ -317,7 +319,7 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
     """
 
     def decorator(do_func):
-        def decorated_func(path, filename=None, recalculate=False, save=True, *args, **kwargs):
+        def decorated_func(path, filename=None, recalculate=False, save=True, verbose=True, *args, **kwargs):
             path = Path(path)
             path.mkdir(parents=True, exist_ok=True)
             filename = do_func.__name__ if filename is None else filename
@@ -342,7 +344,7 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
             # process save or load
             if not save or recalculate or not os.path.exists(filepath) or (check_hash and not_same_hash):
                 # Processing
-                with timeit(f"Processing {filepath}:"):
+                with timeit(f"Processing {filepath}:", verbose=verbose):
                     data = do_func(*args, **kwargs)
 
                 # Saving data and hash
@@ -353,7 +355,10 @@ def if_exist_load_else_do(file_format="joblib", loader=None, saver=None, descrip
                             f.writelines(str(hash_of_input))
             else:
                 # loading data
-                data = ifex_loader(filepath=filepath, loader=loader, file_format=file_format)
+                try:
+                    data = ifex_loader(filepath=filepath, loader=loader, file_format=file_format)
+                except EOFError:
+                    raise Exception(f"Problem with the file: {filepath}. Try deleting it to recalculate it.")
 
             # do post processing
             if isinstance(description, Callable):

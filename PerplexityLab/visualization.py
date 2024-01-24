@@ -178,6 +178,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            legend_font_dict={'weight': 'normal', "size": 18, 'stretch': 'normal'},
                            labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 16},
                            xticks=None, yticks=None,
+                           xlim=None, ylim=None,
                            font_family="amssymb", title=True,
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
@@ -321,6 +322,12 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                                          sub_data2plot_in_ax.items() if
                                                          k in function_arg_names},
                                                       **extra_arguments)
+
+                                    if xlim is not None:
+                                        ax.set_xlim(xlim)
+                                    if ylim is not None:
+                                        ax.set_ylim(ylim)
+
                                     if add_legend:
                                         ax.legend(prop=legend_font_dict)
                                         get_remove_legend(ax, legend_text, legend_handles,
