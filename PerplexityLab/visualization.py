@@ -179,7 +179,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 16},
                            xticks=None, yticks=None,
                            xlim=None, ylim=None,
-                           font_family="amssymb", title=True,
+                           font_family="amssymb", title=True, log="",
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
                            only_create_preimage_data=False, use_preimage_data=False,
@@ -342,6 +342,11 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                     if yticks is not None:
                                         ax.set_yticks(yticks, yticks)
 
+                                    if "x" in log:
+                                        ax.set_xscale("log")
+                                    if "y" in log:
+                                        ax.set_yscale("log")
+
                                     # take the same size as the label
                                     if "size" in axis_font_dict.keys():
                                         ax.tick_params(
@@ -380,7 +385,8 @@ def unfold(dict_of_lists):
 
 
 def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, plot_func: Callable = sns.lineplot,
-                 other_plot_funcs=(), log: str = "", sort_by=[], ylim=None, xlim=None, **kwargs):
+                 other_plot_funcs=(), #log: str = "",
+                 sort_by=[], ylim=None, xlim=None, **kwargs):
     # TODO: get the default arguments of the final plot without this dummy intermediate step.
     full_kwargs = get_default_args(perplex_plot()(lambda fig, ax: ax))
     full_kwargs.update(kwargs)
@@ -414,11 +420,6 @@ def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, p
         ax.set_ylabel(y, fontdict=kwargs["labels_font_dict"])
 
         plot_func(data=data, x=x, y=y, hue=label, ax=ax)
-
-        if "x" in log:
-            ax.set_xscale("log")
-        if "y" in log:
-            ax.set_yscale("log")
 
         if xlim is not None:
             ax.set_xlim(xlim)
