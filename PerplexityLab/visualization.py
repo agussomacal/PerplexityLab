@@ -183,7 +183,9 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                            dpi=None, plot_again=True, format=".png", num_cores=1, add_legend=legend, xlabel=None,
                            ylabel=None, usetex=True, create_preimage_data=False, preimage_format=JOBLIB,
                            only_create_preimage_data=False, use_preimage_data=False,
-                           legend_outside_plot: LegendOutsidePlot = None, **kwargs):
+                           extra_plot_processes: Callable = None, kwargs4savefig=dict(),
+                           legend_outside_plot: LegendOutsidePlot = None,
+                           legend_loc=None, **kwargs):
             format = format if format[0] == "." else "." + format
             if usetex:
                 plt.rcParams.update({
@@ -306,7 +308,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                             with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name,
                                                     savefig=savefig,
                                                     return_fig=True, axes_xy_proportions=axes_xy_proportions,
-                                                    dpi=dpi) as fax:
+                                                    dpi=dpi, kwargs4savefig=kwargs4savefig) as fax:
                                 legend_text = []
                                 legend_handles = []
                                 fig, axes = fax
@@ -329,7 +331,10 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                         ax.set_ylim(ylim)
 
                                     if add_legend:
-                                        ax.legend(prop=legend_font_dict)
+                                        legend_kwargs = dict()
+                                        if legend_loc is not None:
+                                            legend_kwargs["loc"] = legend_loc
+                                        ax.legend(prop=legend_font_dict, **legend_kwargs)
                                         get_remove_legend(ax, legend_text, legend_handles,
                                                           legend_outside_plot=legend_outside_plot)
                                     if xlabel is not None:
@@ -354,7 +359,9 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                                 "size"] if "size" in axis_font_dict.keys() else None)
                                 plot_legend(fig, legend_text, legend_handles, legend_font_dict,
                                             legend_outside_plot=legend_outside_plot)
-                                return plot_name
+                                if extra_plot_processes is not None:
+                                    extra_plot_processes(fig, ax)
+                        return plot_name
 
                     plot_paths = [plot_name for plot_name in get_map_function(num_cores)(parallel_func, iterator())]
                 return plot_paths
@@ -385,7 +392,7 @@ def unfold(dict_of_lists):
 
 
 def generic_plot(data_manager: DataManager, x: str, y: str, label: str = None, plot_func: Callable = sns.lineplot,
-                 other_plot_funcs=(), #log: str = "",
+                 other_plot_funcs=(),  # log: str = "",
                  sort_by=[], ylim=None, xlim=None, **kwargs):
     # TODO: get the default arguments of the final plot without this dummy intermediate step.
     full_kwargs = get_default_args(perplex_plot()(lambda fig, ax: ax))
@@ -480,7 +487,7 @@ def get_sub_ax(ax, i):
 
 @contextmanager
 def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axes_xy_proportions=(4, 4),
-                       dpi=None):
+                       dpi=None, kwargs4savefig=dict()):
     figax = squared_subplots(N_subplots, return_fig=return_fig, axes_xy_proportions=axes_xy_proportions)
 
     yield figax
@@ -489,7 +496,7 @@ def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axe
     #     filename += '.png'
 
     if savefig:
-        plt.savefig(pathname, dpi=dpi)
+        plt.savefig(pathname, dpi=dpi, **kwargs4savefig)
     else:
         plt.show()
     plt.close()
