@@ -62,23 +62,29 @@ def make_data_frames(data_manager: DataManager, var_names=[], group_by=[], **kwa
         yield grouping_vars, pd.DataFrame.from_dict(data2plot)
 
 
-def one_line_iterator(plot_function):
+def one_line_iterator(filter_if_var_is_none=[]):
     """
     Un group the many experiments that could come together to plot them one by one.
     """
-    pf_signature = signature(plot_function)
-    params2unlist = [p for p, v in pf_signature.parameters.items() if
-                     v._default == inspect._empty and p not in ["fig", "ax"]]
 
-    # TODO: when a not default variable is added this crashes because it assumes it comes from datamanager.
-    @wraps(plot_function)
-    def new_func(**kwargs):
-        dm_params_in_plot = filter_dict(params2unlist, kwargs)
-        for one_line in zip(*list(dm_params_in_plot.values())):
-            kwargs.update(dict(zip(dm_params_in_plot.keys(), one_line)))
-            plot_function(**kwargs)
+    def firstfunc(plot_function):
+        pf_signature = signature(plot_function)
+        params2unlist = [p for p, v in pf_signature.parameters.items() if
+                         v._default == inspect._empty and p not in ["fig", "ax"]]
 
-    return new_func
+        # TODO: when a not default variable is added this crashes because it assumes it comes from datamanager.
+        @wraps(plot_function)
+        def new_func(**kwargs):
+            dm_params_in_plot = filter_dict(params2unlist, kwargs)
+            for one_line in zip(*list(dm_params_in_plot.values())):
+                kwargs.update(dict(zip(dm_params_in_plot.keys(), one_line)))
+                if any([kwargs[k] is None for k in filter_if_var_is_none]):
+                    continue
+                plot_function(**kwargs)
+
+        return new_func
+
+    return firstfunc
 
 
 def set_latex_fonts(font_family="amssymb", packages=("amsmath",)):
