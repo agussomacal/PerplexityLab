@@ -90,7 +90,7 @@ class TestVizUtils(unittest.TestCase):
 
     def test_one_line_iterator(self):
         @perplex_plot()
-        @one_line_iterator
+        @one_line_iterator()
         def one_plot(fig, ax, x, z):
             ax.scatter(x, z)
 
@@ -99,7 +99,7 @@ class TestVizUtils(unittest.TestCase):
         assert all([isinstance(path, str) for path in paths])
 
         @perplex_plot()
-        @one_line_iterator
+        @one_line_iterator()
         def one_plot(fig, ax, x, z, a=1):
             ax.scatter(x, z + a)
 
