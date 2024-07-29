@@ -29,7 +29,8 @@ DEFAULT_FONT_SIZE = 18
 
 
 def plot_test(plot_function):
-    def decorated_func(path: Path, name="", folder="", format=".png", axes_xy_proportions=(10, 8), dpi=None, **kwargs):
+    def decorated_func(path: Path, name="", folder="", format=".png", axes_xy_proportions=(10, 8), dpi=None,
+                       share_axis="xy", **kwargs):
         path = path.joinpath(folder)
         Path(path).mkdir(parents=True, exist_ok=True)
         plot_name = name + plot_function.__name__
@@ -37,7 +38,8 @@ def plot_test(plot_function):
         plot_name = f"{path}/{plot_name}{format}"
         with timeit("Plot {}".format(plot_name)):
             with many_plots_context(N_subplots=1, pathname=plot_name, savefig=True,
-                                    return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi) as fax:
+                                    return_fig=True, axes_xy_proportions=axes_xy_proportions, dpi=dpi,
+                                    share_axis=share_axis) as fax:
                 fig, axes = fax
                 plot_function(fig=fig, ax=axes[0, 0], **kwargs)
         return plot_name
@@ -123,7 +125,8 @@ LegendOutsidePlot = namedtuple("LegendOutsidePlot",
                                defaults=["lower center", 0, 0, 0, 0.1])
 
 
-def plot_legend(fig, legend_text, legend_handles, legend_font_dict, legend_outside_plot: LegendOutsidePlot = None):
+def plot_legend(fig, legend_text, legend_handles, legend_font_dict, legend_outside_plot: LegendOutsidePlot = None,
+                add_legend=True):
     if legend_outside_plot is not None:
         # # calculate how many extra lines to be added for legend
         num_legend_text = len(set(legend_text))
@@ -140,7 +143,7 @@ def plot_legend(fig, legend_text, legend_handles, legend_font_dict, legend_outsi
             # hspace=title_max_lines * inches_per_label
         )
 
-        if num_legend_text > 0:
+        if add_legend and num_legend_text > 0:
             # get unique legend text/handlers.
             final_legend_handlers = []
             final_legend_text = []
@@ -179,7 +182,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
         def decorated_func(data_manager: DataManager, path=None, name=None, folder="", plot_by=plot_by_default,
                            axes_by=axes_by_default, folder_by=folder_by_default, sort_by=sort_by_default,
                            axes_xy_proportions=(10, 8),
-                           savefig=True,
+                           savefig=True, share_axis="xy", transpose=False,
                            axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 14},
                            legend_font_dict={'weight': 'normal', "size": 18, 'stretch': 'normal'},
                            labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 16},
@@ -312,9 +315,9 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                         data2plot_per_plot, plot_name = args
                         with timeit("Plot {}\n".format(plot_name)):
                             with many_plots_context(N_subplots=len(data2plot_per_plot), pathname=plot_name,
-                                                    savefig=savefig,
+                                                    savefig=savefig, share_axis=share_axis,
                                                     return_fig=True, axes_xy_proportions=axes_xy_proportions,
-                                                    dpi=dpi, kwargs4savefig=kwargs4savefig) as fax:
+                                                    dpi=dpi, kwargs4savefig=kwargs4savefig, transpose=transpose) as fax:
                                 legend_text = []
                                 legend_handles = []
                                 fig, axes = fax
@@ -343,6 +346,12 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                         ax.legend(prop=legend_font_dict, **legend_kwargs)
                                         get_remove_legend(ax, legend_text, legend_handles,
                                                           legend_outside_plot=legend_outside_plot)
+                                    else:
+                                        try:
+                                            ax.legend_.remove()
+                                        except AttributeError:
+                                            pass
+
                                     if xlabel is not None:
                                         ax.set_xlabel(xlabel, fontdict=labels_font_dict)
                                     if ylabel is not None:
@@ -364,7 +373,7 @@ def perplex_plot(plot_by_default=[], axes_by_default=[], folder_by_default=[], g
                                             labelsize=axis_font_dict[
                                                 "size"] if "size" in axis_font_dict.keys() else None)
                                 plot_legend(fig, legend_text, legend_handles, legend_font_dict,
-                                            legend_outside_plot=legend_outside_plot)
+                                            legend_outside_plot=legend_outside_plot, add_legend=add_legend)
                                 if extra_plot_processes is not None:
                                     extra_plot_processes(fig, ax)
                         return plot_name
@@ -468,13 +477,14 @@ def correlation_plot(data_manager: DataManager, axes_var: str, val_1, val_2, val
     return function_plot(data_manager, **{axes_var: [val_1, val_2]}, **kwargs)
 
 
-def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4)):
+def squared_subplots(N_subplots, return_fig=False, axes_xy_proportions=(4, 4), share_axis="xy", transpose=False):
     if N_subplots > 0:
         nrows = int(np.sqrt(N_subplots))
         ncols = int(np.ceil(N_subplots / nrows))
+        nrows, ncols = (ncols, nrows) if transpose else (nrows, ncols)
         # ncols = int(np.sqrt(N_subplots))
         # nrows = int(np.ceil(N_subplots / ncols))
-        fig, ax = plt.subplots(nrows=nrows, ncols=ncols, sharex=True, sharey=True,
+        fig, ax = plt.subplots(nrows=nrows, ncols=ncols, sharex="x" in share_axis, sharey="y" in share_axis,
                                figsize=(axes_xy_proportions[0] * ncols, axes_xy_proportions[1] * nrows))
         if N_subplots == 1:
             ax = np.array(ax).reshape((1, 1))
@@ -493,8 +503,9 @@ def get_sub_ax(ax, i):
 
 @contextmanager
 def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axes_xy_proportions=(4, 4),
-                       dpi=None, kwargs4savefig=dict()):
-    figax = squared_subplots(N_subplots, return_fig=return_fig, axes_xy_proportions=axes_xy_proportions)
+                       dpi=None, kwargs4savefig=dict(), share_axis="xy", transpose=False):
+    figax = squared_subplots(N_subplots, return_fig=return_fig, axes_xy_proportions=axes_xy_proportions,
+                             share_axis=share_axis, transpose=transpose)
 
     yield figax
 
