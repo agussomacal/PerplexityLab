@@ -1,3 +1,4 @@
+import glob
 import os
 import subprocess
 from datetime import date
@@ -230,3 +231,18 @@ def identify_unused_references_in_latex(path2file: Union[str, Path], new_file_na
 
         with open(Path(path2file).parent.joinpath(new_file_name), "w") as f:
             f.write(text)
+
+
+def identify_unused_images_in_folder(path2latex: Union[str, Path], images_folder, format="*", auto_remove=False):
+    files2eliminate = []
+    files2keep = []
+    with open(path2latex, "r") as f:
+        text = f.read()
+        for filename in glob.iglob(images_folder + '/**/*.' + format, recursive=True):
+            if filename.split("/")[-1] in text:
+                files2keep.append(filename)
+            else:
+                files2eliminate.append(filename)
+                if auto_remove:
+                    Path.unlink(Path(filename))
+    return files2eliminate, files2keep
