@@ -1,5 +1,6 @@
 import glob
 import os
+import shutil
 import subprocess
 from datetime import date
 from pathlib import Path
@@ -246,3 +247,17 @@ def identify_unused_images_in_folder(path2latex: Union[str, Path], images_folder
                 if auto_remove:
                     Path.unlink(Path(filename))
     return files2eliminate, files2keep
+
+
+# ----------- project template -----------
+def create_project_structure(path):
+    path = Path(path)
+    src_path = path.joinpath("src")
+    src_path.mkdir(parents=True, exist_ok=True)
+    config_file = src_path.joinpath("config.py")
+    shutil.copyfile(Path(__file__).parent.joinpath("config_template.py"), config_file)
+    subprocess.call(f"python {config_file}", shell=True)
+
+
+if __name__ == "__main__":
+    create_project_structure(path=input("Write path to project folder: "))
