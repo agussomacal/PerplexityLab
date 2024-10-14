@@ -501,6 +501,16 @@ def get_sub_ax(ax, i):
     return ax[i // ncols, i % ncols]
 
 
+def save_fig_without_white(filename, dpi=None, **kwargs4savefig):
+    plt.gca().set_axis_off()
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    plt.margins(0, 0)
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    plt.savefig(filename, bbox_inches='tight', pad_inches=0, transparent=True, dpi=dpi, **kwargs4savefig)
+    plt.close()
+
+
 @contextmanager
 def many_plots_context(N_subplots, pathname, savefig=True, return_fig=False, axes_xy_proportions=(4, 4),
                        dpi=None, kwargs4savefig=dict(), share_axis="xy", transpose=False):
