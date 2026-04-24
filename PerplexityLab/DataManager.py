@@ -173,8 +173,8 @@ class DataManager:
             self.variables[k].dependencies.update(output_funcs.keys())
             self.variables[k].root.update(input_params.keys())
         # add the result.
-        self.database[subset_dict(input_params, input_params.keys()),
-        subset_dict(output_funcs, output_funcs.keys())] = function_result
+        self.database[[subset_dict(input_params, input_params.keys()),
+        subset_dict(output_funcs, output_funcs.keys())]] = function_result
 
     def __getitem__(self, item):
         if isinstance(item, (set, list, tuple)):
